@@ -79,7 +79,7 @@ class Ball(PhysicsObject):
         self.turtle.shapesize(self.mass / 20)
         self.turtle.penup()
         
-        self.turtle.color(random.random(), random.random(), random.random())
+        self.turtle.color(*[random.random() for i in range(3)])
         
     def draw(self):
         self.turtle.goto(self.x, self.y)
@@ -93,10 +93,13 @@ def add_ball(balls: list[PhysicsObject], x: float|None, y: float|None) -> None:
     if x: ball.x = x
     if y: ball.y = y
     balls.append(ball)
+     
+def update_sim_size(bg: turtle.Turtle) -> None:
+    global sim_size
+    sim_size = min(turtle.window_width(), turtle.window_height()) // 2 - 10
+    bg.shapesize(sim_size / 20 * 2)
         
 def main() -> None:
-    global sim_size
-    
     turtle.tracer(0)
     turtle.bgcolor(BEZEL)
     
@@ -117,9 +120,7 @@ def main() -> None:
     iteration = 0
         
     while True:
-        if iteration % HOUSEKEEPING_FREQ == 0:
-            sim_size = min(turtle.window_width(), turtle.window_height()) // 2 - 10
-            bg.shapesize(sim_size / 20 * 2)
+        if iteration % HOUSEKEEPING_FREQ == 0: update_sim_size(bg)
         
         if SPAWN_RATE != -1 and random.randint(0, SPAWN_RATE) == 0:
             add_ball(balls, None, None)
