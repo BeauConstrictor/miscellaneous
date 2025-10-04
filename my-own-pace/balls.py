@@ -10,9 +10,8 @@ G = 10
 SPAWN_RATE = 200
 BALL_COUNT = 30
 HOUSEKEEPING_FREQ = 1000
-COLOURS = ["#cc241d", "#98971a", "#d79921", "#458588", "#b16286", "#689d6a"]
-BEZEL = "#1d2021"
-BACKGROUND = "#282828"
+BEZEL = "black"
+BACKGROUND = "white"
 
 sim_size = 200
 
@@ -80,7 +79,7 @@ class Ball(PhysicsObject):
         self.turtle.shapesize(self.mass / 20)
         self.turtle.penup()
         
-        self.turtle.color(random.choice(COLOURS))
+        self.turtle.color(random.random(), random.random(), random.random())
         
     def draw(self):
         self.turtle.goto(self.x, self.y)
@@ -99,7 +98,6 @@ def main() -> None:
     global sim_size
     
     turtle.tracer(0)
-    turtle.colormode(255)
     turtle.bgcolor(BEZEL)
     
     bg = turtle.Turtle()
