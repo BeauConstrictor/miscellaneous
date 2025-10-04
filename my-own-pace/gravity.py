@@ -162,6 +162,8 @@ def main() -> None:
         previous_time = current_time
         
         dt = elapsed * SIM_SPEED
+        
+        if iteration % 10000 == 0: update_sim_size(bg)
                 
         for b in balls:
             b.step(dt)
