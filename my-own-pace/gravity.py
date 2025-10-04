@@ -6,14 +6,14 @@ import time
 
 SIM_SPEED = 0.01
 DRAG = 0.9995
-G = 10
-SPAWN_RATE = 200
-BALL_COUNT = 30
-HOUSEKEEPING_FREQ = 1000
-BEZEL = "black"
-BACKGROUND = "white"
+G = 5000000000
+BEZEL = "gray"
+CENTER = (0, 0)
+SUN_SIZE = 100
+SUN_COLOR = "yellow"
+BACKGROUND = "black"
 
-sim_size = 200
+sim_size = 2000
 
 class PhysicsObject:
     def __init__(self, colliders: list[Self]):
@@ -30,9 +30,33 @@ class PhysicsObject:
         
         self.colliders = colliders
         
-    def apply_gravity(self) -> None:
-        self.vy -= self.mass * G
-            
+    def destroy(self) -> None:
+        self.colliders.remove(self)
+        
+    def hit_sun(self) -> None:
+        dx = self.x - CENTER[0]
+        dy = self.y - CENTER[1]
+        distance = math.sqrt(dx**2 + dy**2) - self.mass / 2
+        
+        if distance < SUN_SIZE / 2:
+            self.destroy()
+        
+    def apply_gravity(self, dt) -> None:
+        dx = CENTER[0] - self.x
+        dy = CENTER[1] - self.y
+        distance_sq = dx**2 + dy**2
+        
+        if distance_sq == 0: return
+        
+        force = G * self.mass / distance_sq
+        
+        distance = math.sqrt(distance_sq)
+        nx = dx / distance
+        ny = dy / distance
+        
+        self.vx += nx * force * dt
+        self.vy += ny * force * dt
+
     def move_based_on_velocity(self, dt) -> None:
         bound = sim_size - self.mass / 2
         
@@ -55,18 +79,21 @@ class PhysicsObject:
         self.vy *= self.drag
         
     def step(self, dt):
-        self.apply_gravity()
-        self.bounce()
+        self.apply_gravity(dt)
         self.apply_drag()
         
         self.move_based_on_velocity(dt)
+        
+        self.bounce()
+        self.hit_sun()
+
         
 class Ball(PhysicsObject):
     def __init__(self, colliders: list[PhysicsObject]):
         super().__init__(colliders)
         
-        self.vx = random.randint(-10000, 10000)
-        self.vy = random.randint(-10000, 10000)
+        self.vx = random.randint(-50000, 50000)
+        self.vy = random.randint(-50000, 50000)
         
         self.mass = random.randint(10, 50)
         self.bounciness = 10 / self.mass
@@ -77,27 +104,31 @@ class Ball(PhysicsObject):
         self.turtle = turtle.Turtle()
         self.turtle.shape("circle")
         self.turtle.shapesize(self.mass / 20)
+        self.turtle.pensize(4)
         self.turtle.penup()
         
         self.turtle.color(*[random.random() for i in range(3)])
         
-    def draw(self):
+    def destroy(self) -> None:
+        self.colliders.remove(self)
+        self.turtle.hideturtle()
+        
+    def draw(self) -> None:
         self.turtle.goto(self.x, self.y)
+        self.turtle.pendown()
         
 def add_ball(balls: list[PhysicsObject], x: float|None, y: float|None) -> None:
-    removed = balls[0]
-    removed.turtle.hideturtle()
-    balls.remove(removed)
-    
     ball = Ball(balls)
     if x: ball.x = x
     if y: ball.y = y
     balls.append(ball)
-     
+    
 def update_sim_size(bg: turtle.Turtle) -> None:
     global sim_size
-    sim_size = min(turtle.window_width(), turtle.window_height()) // 2 - 10
+    sim_size = max(turtle.window_width(), turtle.window_height()) // 2 - 10
+    bg.clear()
     bg.shapesize(sim_size / 20 * 2)
+    bg.stamp()
         
 def main() -> None:
     turtle.tracer(0)
@@ -107,11 +138,17 @@ def main() -> None:
     bg.shape("square")
     bg.shapesize(sim_size / 20 * 2)
     bg.color(BACKGROUND)
+    bg.hideturtle()
+    bg.stamp()
+    
+    sun = turtle.Turtle()
+    sun.shapesize(SUN_SIZE / 20)
+    sun.color(SUN_COLOR)
+    sun.shape("circle")
+    sun.penup()
+    sun.goto(CENTER)
     
     balls = []
-    
-    for i in range(BALL_COUNT):
-        balls.append(Ball(balls))
         
     previous_time = time.perf_counter()
     
@@ -120,12 +157,6 @@ def main() -> None:
     iteration = 0
         
     while True:
-        if iteration % HOUSEKEEPING_FREQ == 0:
-            update_sim_size(bg)
-        
-        if SPAWN_RATE != -1 and random.randint(0, SPAWN_RATE) == 0:
-            add_ball(balls, None, None)
-        
         current_time = time.perf_counter()
         elapsed = current_time - previous_time
         previous_time = current_time
