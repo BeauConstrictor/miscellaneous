@@ -168,7 +168,7 @@ class Game:
         turtle.onkeypress(lambda: self.bird.jump(), " ")
         turtle.listen()
         
-        while True:
+        while True: 
             self.step()
             self.draw()
             if not self.handle_scoring_and_collision():

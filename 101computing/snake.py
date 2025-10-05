@@ -181,10 +181,10 @@ def main() -> None:
     init_turtle()
     snake = Snake()
     
-    turtle.onkey(lambda: go_up(snake), "Up")
-    turtle.onkey(lambda: go_down(snake), "Down")
-    turtle.onkey(lambda: go_left(snake), "Left")
-    turtle.onkey(lambda: go_right(snake), "Right")
+    turtle.onkeypress(lambda: go_up(snake), "Up")
+    turtle.onkeypress(lambda: go_down(snake), "Down")
+    turtle.onkeypress(lambda: go_left(snake), "Left")
+    turtle.onkeypress(lambda: go_right(snake), "Right")
     turtle.listen()
 
     update(snake)
