@@ -1,3 +1,4 @@
+from tkinter import messagebox
 import random
 import turtle
 import time
@@ -10,6 +11,8 @@ Y_VEL_RANGE = 20000
 APERTURE = 230
 PIPE_SPEED = 8
 PIPE_WIDTH = 40
+WIDTH = 900
+HEIGHT = 700
 
 class Pipe:
     def __init__(self, x: int) -> None:
@@ -89,7 +92,7 @@ class Score:
         self.turtle.color("black")
         self.turtle.penup()
         self.turtle.hideturtle()
-        self.turtle.goto(0, 900/4)
+        self.turtle.goto(0, WIDTH/4)
         
     def set_score(self, score: int) -> None:
         self.turtle.clear()
@@ -99,7 +102,18 @@ class Score:
 
 class Game:
     def __init__(self) -> None:
-        self.pipe = Pipe(900/2)
+        self.pipe = None
+        self.bird = None
+        self.restart()
+        
+    def restart(self) -> None:
+        if self.pipe is not None:
+            self.bird.turtle.hideturtle()
+            for h in self.pipe.halves:
+                h.hideturtle()
+            self.counter.turtle.clear()
+    
+        self.pipe = Pipe(WIDTH/2)
         self.bird = Bird()
         self.counter = Score()
         
@@ -110,9 +124,7 @@ class Game:
         
     def handle_scoring_and_collision(self) -> bool:
         if self.bird.check_collision(self.pipe) or \
-           self.bird.y > 900/2 or self.bird.y < -900/2:
-            self.counter.turtle.color("red")
-            self.counter.set_score(self.score)
+           self.bird.y > WIDTH/2 or self.bird.y < -WIDTH/2:
             return False
 
         if self.bird.passed_pipe(self.pipe, self.scored):
@@ -120,12 +132,18 @@ class Game:
             self.counter.set_score(self.score)
             self.scored = True
 
-        if self.pipe.x < -900/2:
+        if self.pipe.x < -WIDTH/2:
             self.pipe.y = random.randint(-200, 200)
-            self.pipe.x = 900/2
+            self.pipe.x = WIDTH/2
             self.scored = False
             
         return True
+        
+    def trigger_game_over(self) -> bool:
+        self.counter.turtle.color("red")
+        self.counter.set_score(self.score)
+        
+        return messagebox.askyesno("Game Over!", "Would you like to play again?")
         
     def step(self) -> None:
         self.pipe.step()    
@@ -141,18 +159,23 @@ class Game:
         turtle.tracer(0)
         turtle.bgcolor("lightblue")
         
-        turtle.setup(width=900, height=700)
+        turtle.setup(width=WIDTH, height=HEIGHT)
         screen = turtle.getcanvas().winfo_toplevel()
         screen.resizable(False, False)
         screen.title("Flappy Turtle")
         
         turtle.onscreenclick(lambda x, y: self.bird.jump())
+        turtle.onkeypress(lambda: self.bird.jump(), " ")
+        turtle.listen()
         
         while True:
             self.step()
             self.draw()
-            if not self.handle_scoring_and_collision(): break
-            time.sleep(0.01)
+            if not self.handle_scoring_and_collision():
+                play_again = self.trigger_game_over()
+                if not play_again: return
+                self.restart()
+            time.sleep(0.007)
             
         turtle.done()
             
