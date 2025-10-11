@@ -1,7 +1,7 @@
 # IMPLEMENTATION NOTES:
 # - i used a set to represent the tape, as this way memory is only allocated
 #   as changes are made, so that the tape can expand to any size supported by
-#   the mmeory, without allocating that much space beforehand.
+#   the memory, without allocating that much space beforehand.
 # - in order to halt, just make a state change to None.
 # - this is uncommon but still fine i think: the tape is infinite in both
 #   directions.
