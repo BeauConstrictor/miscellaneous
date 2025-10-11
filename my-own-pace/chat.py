@@ -61,7 +61,7 @@ def main() -> None:
     if expect_convo:
         print(f"your ip: {backend.ip}")
         backend.expect_convo()
-        print("connected!\n")
+        print(f"{backend.target} has connected!\n")
     else:
         ip = input("who would you like to connect to? ")
         try:
