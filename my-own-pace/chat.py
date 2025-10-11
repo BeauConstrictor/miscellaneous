@@ -69,6 +69,7 @@ def main() -> None:
         except ConnectionRefusedError:
             print("no one is waiting for you there :(")
             return
+        print("")
         
     if expect_convo:
         print(f"      -> {backend.expect_message()}")
