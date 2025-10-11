@@ -63,7 +63,7 @@ def main() -> None:
         backend.expect_convo()
         print("connected!\n")
     else:
-        ip = "192.168.1.114" # input("who would you like to connect to? ")
+        ip = input("who would you like to connect to? ")
         try:
             backend.start_convo(ip)
         except ConnectionRefusedError:
