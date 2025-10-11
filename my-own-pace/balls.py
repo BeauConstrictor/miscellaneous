@@ -10,15 +10,17 @@ import turtle
 import math
 import time
 
-SIM_SPEED = 0.01
+SIM_SPEED = 0.015
+FRAME_INTERVAL = 8
 DRAG = 0.9995
 G = 10
 SPAWN_RATE = 200
-BALL_COUNT = 120
+BALL_COUNT = 0
 HOUSEKEEPING_FREQ = 1000
 BEZEL = "black"
 BACKGROUND = "white"
 AUTO_SPAWN_BALLS = False
+AUTO_REMOVE_BALLS = False
 
 sim_size = 400
 
@@ -110,9 +112,10 @@ class Ball(PhysicsObject):
         self.turtle.goto(self.x, self.y)
         
 def add_ball(balls: list[PhysicsObject], x: float|None, y: float|None) -> None:
-    removed = balls[0]
-    removed.turtle.hideturtle()
-    balls.remove(removed)
+    if AUTO_REMOVE_BALLS:
+        removed = balls[0]
+        removed.turtle.hideturtle()
+        balls.remove(removed)
     
     ball = Ball(balls)
     if x: ball.x = x
@@ -170,7 +173,6 @@ def handle_ball_collision(a: "Ball", b: "Ball") -> None:
     a.vy += impulse_y / a.mass
     b.vx -= impulse_x / b.mass
     b.vy -= impulse_y / b.mass
-
         
 def main() -> None:
     turtle.tracer(0)
@@ -190,26 +192,28 @@ def main() -> None:
     
     turtle.onscreenclick(lambda x, y: add_ball(balls, x, y))
     
-    while True:
+    def update_frame():
+        nonlocal previous_time
+
         if AUTO_SPAWN_BALLS and SPAWN_RATE != -1 and random.randint(0, SPAWN_RATE) == 0:
             add_ball(balls, None, None)
         
         current_time = time.perf_counter()
         elapsed = current_time - previous_time
         previous_time = current_time
-        
         dt = elapsed * SIM_SPEED
-                
+        
         for i, b in enumerate(balls):
-            b.step(dt)
-            
             for j in range(i + 1, len(balls)):
                 handle_ball_collision(b, balls[j])
-                
+            b.step(dt)
             b.draw()
-
-            
+        
         turtle.update()
+        turtle.ontimer(update_frame, FRAME_INTERVAL)
+    
+    update_frame()
+    turtle.done()
         
 if __name__ == "__main__":
     time.sleep(0.5)

@@ -8,6 +8,11 @@ SIZE = 20
 FRAMERATE = 10
 APPLE_COUNT = 2
 DEMO_MODE = False
+STARTING_SNAKE_SIZE = 15
+SNAKE_COLOURS = [(0, 1, 0), (0, 0.5, 0)]
+APPLE_SHAPE = "turtle"
+APPLE_COLOUR = "red"
+SPIN_SPEED = 100
 
 HIGHSCORE_PATH = os.path.join(os.path.dirname(__file__), '.snake-highscore.txt')
 
@@ -37,7 +42,7 @@ class Snake:
         self.score_counter.goto(0, -SIZE*10 - 80)
         
     def restart(self) -> None:
-        self.positions = [(i, 0) for i in range(9)]
+        self.positions = [(i, 0) for i in range(STARTING_SNAKE_SIZE)]
         self.direction = Direction.RIGHT
         self.eaten_apple = False
         
@@ -52,7 +57,7 @@ class Snake:
     def add_apple(self) -> None:
         while True:
             pos = (random.randint(0, SIZE-1), random.randint(0, SIZE-1))
-            if pos not in self.positions: break
+            if pos not in self.positions and pos not in self.apples: break
         self.apples.append(pos)
         
     def draw_score(self) -> None:
@@ -111,16 +116,17 @@ class Snake:
         
         for i, pos in enumerate(self.positions):
             t = i / len(self.positions)
-            a = (0, 1, 0)
-            b = (0, 0.5, 0)
+            a = SNAKE_COLOURS[0]
+            b = SNAKE_COLOURS[1]
             self.turtle.color(lerp_color(a, b, t))
             self.goto_cell(pos[0], pos[1])
             
         self.turtle.penup()
             
     def draw_apples(self) -> None:
-        self.turtle.color("red")
-        self.turtle.shape("circle")
+        self.turtle.color(APPLE_COLOUR)
+        self.turtle.shape(APPLE_SHAPE)
+        self.turtle.setheading((self.turtle.heading() + SPIN_SPEED/FRAMERATE) % 360)
         for a in self.apples:
             self.goto_cell(a[0], a[1])
             self.turtle.stamp()
@@ -185,6 +191,11 @@ def main() -> None:
     turtle.onkeypress(lambda: go_down(snake), "Down")
     turtle.onkeypress(lambda: go_left(snake), "Left")
     turtle.onkeypress(lambda: go_right(snake), "Right")
+
+    turtle.onkeypress(lambda: go_up(snake), "w")
+    turtle.onkeypress(lambda: go_down(snake), "s")
+    turtle.onkeypress(lambda: go_left(snake), "a")
+    turtle.onkeypress(lambda: go_right(snake), "d")
     turtle.listen()
 
     update(snake)
