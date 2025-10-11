@@ -1,7 +1,7 @@
 import socket
-
-# TODO: wrap this in some kinda tkinter gui
-# OTHER TODO: add concurrency so that you can send multiple messages in a row
+import threading
+import tkinter as tk
+from tkinter import simpledialog, scrolledtext, messagebox
 
 PORT = 5556
 END = "---< this convo is over >---"
@@ -51,10 +51,85 @@ class ChatBackend:
         s.connect(("8.8.8.8", 80))
         self.ip = s.getsockname()[0]
         s.close()
+        
+class GuiFrontend:
+    def __init__(self, backend):
+        self.root = tk.Tk()
+        self.backend = backend
 
-def main() -> None:
+        self.root.title("Tkinter Chat")
+        self.root.minsize(100, 550)
+
+        self.chat_area = scrolledtext.ScrolledText(self.root, state='disabled', wrap='word')
+        self.chat_area.pack(expand=True, fill='both', padx=5, pady=5)
+
+        self.entry = tk.Entry(self.root)
+        self.entry.pack(side='left', fill='x', expand=True, padx=5, pady=5)
+        self.entry.bind("<Return>", lambda e: self.send_message())
+
+        self.send_button = tk.Button(self.root, text="Send", command=self.send_message)
+        self.send_button.pack(side='right', padx=5, pady=5)
+
+        self.start_connection()
+
+    def start_connection(self):
+        choice = messagebox.askyesno("Connection", "Start a new chat?")
+        if choice:
+            self.log(f"Room code: {self.backend.ip}\nWaiting for somone to join...")
+            threading.Thread(target=self.wait_for_connection, daemon=True).start()
+        else:
+            ip = simpledialog.askstring("Connect", "Enter a room code:")
+            if not ip:
+                self.root.destroy()
+                return
+            try:
+                self.backend.start_convo(ip)
+                self.log(f"Connected to {ip}")
+                threading.Thread(target=self.listen_for_messages, daemon=True).start()
+            except ConnectionRefusedError:
+                messagebox.showerror("Error", "That is not a room.")
+                self.root.destroy()
+
+    def wait_for_connection(self):
+        self.backend.expect_convo()
+        self.log(f"Connected by {self.backend.target}")
+        threading.Thread(target=self.listen_for_messages, daemon=True).start()
+
+    def listen_for_messages(self):
+        while True:
+            try:
+                msg = self.backend.expect_message()
+                if msg is None:
+                    self.log(f"{self.backend.target} left the chat.")
+                    break
+                self.log(f"{self.backend.target} -> {msg}")
+            except Exception as e:
+                self.log(f"Connection closed: {e}")
+                break
+
+    def send_message(self):
+        msg = self.entry.get().strip()
+        if not msg:
+            return
+        self.log(f"You -> {msg}")
+        self.backend.send_message(msg)
+        self.entry.delete(0, tk.END)
+        if msg.lower() == "cya":
+            self.backend.end_convo()
+            self.log("You left the chat.")
+            return
+
+    def log(self, text):
+        self.chat_area.config(state='normal')
+        self.chat_area.insert(tk.END, text + "\n")
+        self.chat_area.config(state='disabled')
+        self.chat_area.yview(tk.END)
+        
+    def start(self):
+        self.root.mainloop()
+
+def cli_frontend() -> None:
     backend = ChatBackend()
-    
     
     expect_convo = (input("are you waiting for someone to join? [Y/n] ")
                     .strip() + " ")[0].lower() != "n"                
@@ -85,6 +160,11 @@ def main() -> None:
             print(f"reply -> cya ({backend.target} left the chat)")
             break
         print(f"reply -> {reply}")
+    
+def main() -> None:
+    backend = ChatBackend()
+    gui = GuiFrontend(backend)
+    gui.start()
         
 if __name__ == "__main__":
     main()
