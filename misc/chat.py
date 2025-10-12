@@ -1,5 +1,6 @@
 import socket
 import threading
+from sys import argv
 import tkinter as tk
 from tkinter import simpledialog, scrolledtext, messagebox
 
@@ -186,4 +187,7 @@ def main() -> None:
     gui.start()
         
 if __name__ == "__main__":
-    main()
+    if len(argv) > 1 and (argv[1] == "--cli" or argv[1] == "-c"):
+        cli_frontend()
+    else:
+        main()
