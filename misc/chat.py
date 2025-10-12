@@ -51,7 +51,7 @@ class ChatBackend:
         
     def grab_local_ip(self) -> None:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
+        s.connect(("8.8.8.8", 80)) # google dns
         self.ip = s.getsockname()[0]
         s.close()
         
@@ -66,6 +66,7 @@ class GuiFrontend:
         self.chat_area = scrolledtext.ScrolledText(self.root, state='disabled', wrap='word')
         self.chat_area.tag_config("user", foreground="green", font=("Helvetica", 10, "bold"))
         self.chat_area.tag_config("them", foreground="blue", font=("Helvetica", 10, "bold"))
+        self.chat_area.tag_config("system", foreground="darkgray", font=("Helvetica", 10, "italic"))
         self.chat_area.pack(expand=True, fill='both', padx=5, pady=5)
 
         self.entry = tk.Entry(self.root)
@@ -74,14 +75,13 @@ class GuiFrontend:
 
         self.send_button = tk.Button(self.root, text="Send", command=self.send_message)
         self.send_button.pack(side='right', padx=5, pady=5)
-        
-        self.log("Send 'cya' to leave the chat.\n", "user")
 
         self.start_connection()
 
     def start_connection(self):
-        choice = messagebox.askyesno("Connection", "Start a new chat?")
-        if choice:
+        choice = messagebox.askyesno("Join Someone",
+                                     "Would you like to join an existing chat?")
+        if not choice:
             self.log(f"Room code: {self.backend.ip}\nWaiting for somone to join...")
             threading.Thread(target=self.wait_for_connection, daemon=True).start()
         else:
@@ -91,15 +91,17 @@ class GuiFrontend:
                 return
             try:
                 self.backend.start_convo(ip)
-                self.log(f"Joined {ip}...")
+                self.log(f"Joined {ip}...\n")
+                self.log("Send 'cya' to leave the chat.\n")
                 threading.Thread(target=self.listen_for_messages, daemon=True).start()
             except ConnectionRefusedError:
-                messagebox.showerror("Error", "That is not a room.")
+                messagebox.showerror("Not found", "That room could not be found.")
                 self.root.destroy()
 
     def wait_for_connection(self):
         self.backend.expect_convo()
         self.log(f"Someone has joined!\n")
+        self.log("Send 'cya' to leave the chat.\n")
         threading.Thread(target=self.listen_for_messages, daemon=True).start()
 
     def listen_for_messages(self):
@@ -107,6 +109,7 @@ class GuiFrontend:
             try:
                 msg = self.backend.expect_message()
                 if msg is None:
+                    self.log(f"cya", "them")
                     self.log(f"\nThe chat has been closed.")
                     self.send_button.config(state=tk.DISABLED)
                     self.entry.config(state=tk.DISABLED)
@@ -132,7 +135,7 @@ class GuiFrontend:
         self.backend.send_message(msg)
             
 
-    def log(self, text=str, tag=str|None) -> None:
+    def log(self, text=str, tag: str="system") -> None:
         self.chat_area.config(state='normal')
         if tag is not None:
             self.chat_area.insert(tk.END, text + "\n", tag)
