@@ -30,10 +30,14 @@ class ChatBackend:
         data = self.convo.recv(1024)
         msg = data.decode()
         
+        if msg == "":
+            self.convo = None
+        
         if msg == END:
             self.convo.close()
             self.convo = None
             return None
+        
         return msg
         
     def start_convo(self, ip: str) -> None:
@@ -61,7 +65,7 @@ class GuiFrontend:
         self.root = tk.Tk()
         self.backend = backend
 
-        self.root.title("Tkinter Chat")
+        self.root.title("Wazzup")
         self.root.minsize(100, 550)
 
         self.chat_area = scrolledtext.ScrolledText(self.root, state='disabled', wrap='word')
@@ -76,44 +80,69 @@ class GuiFrontend:
 
         self.send_button = tk.Button(self.root, text="Send", command=self.send_message)
         self.send_button.pack(side='right', padx=5, pady=5)
+        
+        self.menu = tk.Menu(self.root)
+        self.menu.add_command(label="Host", command=self.host)
+        self.menu.add_command(label="Join", command=self.join)
+        self.menu.add_command(label="Leave", command=self.leave)
+        self.root.config(menu=self.menu)
+        
+        self.disable_sending()
+        
+    def disable_sending(self) -> None:
+        self.send_button.config(state=tk.DISABLED)
+        self.entry.delete(0, tk.END)
+        self.entry.config(state=tk.DISABLED)
+        
+    def enable_sending(self) -> None:
+        self.send_button.config(state=tk.NORMAL)
+        self.entry.config(state=tk.NORMAL)
+        
+    def host(self) -> None:
+        self.clear()
+        
+        self.log(f"Room code: {self.backend.ip}\nWaiting for somone to join...")
+        threading.Thread(target=self.wait_for_connection, daemon=True).start()
+        
+    def join(self) -> None:
+        ip = simpledialog.askstring("Connect", "Enter a room code:")
+        if not ip:
+            return
+        try:
+            self.backend.start_convo(ip)
+            
+            self.clear()
+            self.log(f"Joined {ip}...\n")
+            self.enable_sending()
 
-        self.start_connection()
-
-    def start_connection(self):
-        choice = messagebox.askyesno("Join Someone",
-                                     "Would you like to join an existing chat?")
-        if not choice:
-            self.log(f"Room code: {self.backend.ip}\nWaiting for somone to join...")
-            threading.Thread(target=self.wait_for_connection, daemon=True).start()
-        else:
-            ip = simpledialog.askstring("Connect", "Enter a room code:")
-            if not ip:
-                self.root.destroy()
-                return
-            try:
-                self.backend.start_convo(ip)
-                self.log(f"Joined {ip}...\n")
-                self.log("Send 'cya' to leave the chat.\n")
-                threading.Thread(target=self.listen_for_messages, daemon=True).start()
-            except ConnectionRefusedError:
-                messagebox.showerror("Not found", "That room could not be found.")
-                self.root.destroy()
+            threading.Thread(target=self.listen_for_messages, daemon=True).start()
+        except Exception:
+            print("err")
+            messagebox.showerror("Not found", "That room could not be found.")
+            
+    def leave(self) -> None:
+        self.clear()
+        self.disable_sending()
+        self.backend.end_convo()
 
     def wait_for_connection(self):
         self.backend.expect_convo()
         self.log(f"Someone has joined!\n")
-        self.log("Send 'cya' to leave the chat.\n")
+        self.enable_sending()
         threading.Thread(target=self.listen_for_messages, daemon=True).start()
 
     def listen_for_messages(self):
         while True:
+            if self.backend.convo == None:
+                self.disable_sending()
+                self.clear()
+                break
+            
             try:
                 msg = self.backend.expect_message()
                 if msg is None:
-                    self.log(f"cya", "them")
                     self.log(f"\nThe chat has been closed.")
-                    self.send_button.config(state=tk.DISABLED)
-                    self.entry.config(state=tk.DISABLED)
+                    self.disable_sending()
                     break
                 self.log(f"{msg}", "them")
             except Exception as e:
@@ -122,19 +151,18 @@ class GuiFrontend:
 
     def send_message(self):
         if self.backend.convo is None: return
-        
         msg = self.entry.get().strip()
         if not msg:
             return
         self.entry.delete(0, tk.END)
-        if msg.lower() == "cya":
-            self.backend.end_convo()
-            self.root.destroy()
-            return
         
         self.log(f"{msg}", "user")
         self.backend.send_message(msg)
             
+    def clear(self) -> None:
+        self.chat_area.config(state='normal')
+        self.chat_area.delete("1.0", tk.END)
+        self.chat_area.config(state='disabled')
 
     def log(self, text=str, tag: str="system") -> None:
         self.chat_area.config(state='normal')
