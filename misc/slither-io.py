@@ -5,9 +5,19 @@ import time
 
 import noise
 
-SNAKE_COLOURS = [(100, 50, 0), (240, 160, 0), (255, 200, 0)]
-WINDOW_WIDTH = 1920
-WINDOW_HEIGHT = 1080
+ORB_COLORS = [
+    (255, 0, 0),  
+    (255, 102, 0),
+    (255, 255, 0),
+    (0, 255, 0),  
+    (0, 255, 255),
+    (0, 102, 255),
+    (153, 0, 255),
+    (255, 0, 204),
+    (255, 0, 255),
+    (0, 204, 204) 
+]
+SNAKE_COLOR = ORB_COLORS[1]
 BG_WIDTH = 599
 BG_HEIGHT = 519
 TARGET_FPS = 50
@@ -19,10 +29,16 @@ ORB_SHAKE = 10
 ORB_SHAKE_RATE = 10
 ORB_ATTRACTION = 0.2
 ORB_ATTRACTION_DIST = 50
+USRNAME_HEIGHT = 30
 
 mouse_x, mouse_y = 0, 0
 dt = 0.016
 frame = 0
+
+root = tk.Tk()
+window_width = root.winfo_screenwidth()
+window_height = root.winfo_screenheight()
+root.destroy()
 
 def snake_radius(segment_count: int) -> float:
     return 10 + segment_count / 30
@@ -43,14 +59,28 @@ def lerp_color(c1, c2, t):
 def rgb_to_hex(c):
     return f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
 
+def set_z_height(canvas: tk.Canvas) -> None:
+    canvas.tag_lower("background")
+    canvas.tag_raise("orbs")
+    canvas.tag_raise("snake")
+    canvas.tag_raise("usrname")
+
 class Snake:
-    def __init__(self, canvas):
+    def __init__(self, canvas, username: str = "Player"):
         self.canvas = canvas
         self.positions = [(0, i*5) for i in range(20)]
         self.add_length = 0
+        
+        self.primary = rgb_to_hex(SNAKE_COLOR)
+        self.accent = rgb_to_hex([min(255, max(c-50, 0)) for c in SNAKE_COLOR])
+        
+        self.usrname_id = canvas.create_text(window_width/2, window_height/2-USRNAME_HEIGHT,
+                                             text=username,
+                                             fill="white",
+                                             tags=("usrname",))
        
         self.segments = [
-            canvas.create_oval(0,0,0,0, fill=rgb_to_hex(SNAKE_COLOURS[0]), outline="")
+            canvas.create_oval(0,0,0,0, fill=self.accent, outline="")
             for _ in self.positions
         ]
 
@@ -70,7 +100,8 @@ class Snake:
         offset = normalise((mouse_x, mouse_y), SPEED*dt)
         new_pos = (px + offset[0], py + offset[1])
         self.positions.append(new_pos)
-        seg = self.canvas.create_oval(0,0,0,0, fill=rgb_to_hex(SNAKE_COLOURS[1]), outline=rgb_to_hex(SNAKE_COLOURS[2]), tags=("snake",))
+        seg = self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary, tags=("snake",))
+
         self.segments.append(seg)
 
     def draw(self):
@@ -79,31 +110,33 @@ class Snake:
         sf = shrink_factor(len(self.positions))
 
         for i, (seg, (x, y)) in enumerate(zip(self.segments, self.positions)):
-            t = i / len(self.positions)
-            color = lerp_color(SNAKE_COLOURS[0], SNAKE_COLOURS[1], t)
-            if i == len(self.positions)-1:
-                color = SNAKE_COLOURS[2]
-            color_hex = rgb_to_hex(color)
-
             rel_x = x - head_x
             rel_y = y - head_y
 
-            shrunk_x = WINDOW_WIDTH/2 + rel_x / sf
-            shrunk_y = WINDOW_HEIGHT/2 + rel_y / sf
+            shrunk_x = window_width/2 + rel_x / sf
+            shrunk_y = window_height/2 + rel_y / sf
 
             self.canvas.coords(seg,
                             shrunk_x - radius, shrunk_y - radius,
                             shrunk_x + radius, shrunk_y + radius)
-            self.canvas.itemconfig(seg, fill=color_hex)
+            
+            if i == len(self.positions)-1:
+                self.canvas.itemconfig(seg,
+                    fill=self.primary, outline=self.primary)
+            else:    
+                self.canvas.itemconfig(seg,
+                    fill=self.accent, outline=self.primary)
 
 class Orb:
     def __init__(self, canvas, snake):
         self.canvas = canvas
         self.snake = snake
         self.rand_pos()
-        self.color = (random.randint(51, 153), random.randint(51, 153), random.randint(51, 153))
-        self.radius = random.randint(2, 15)
-        self.id = canvas.create_oval(0,0,0,0, fill=rgb_to_hex(self.color), outline="", tags=("orbs",))
+        self.color = random.choice(ORB_COLORS)
+        self.id = canvas.create_oval(0,0,0,0, fill=rgb_to_hex(self.color),
+                                     outline=rgb_to_hex([max(0, c-20) for c in self.color]),
+                                     tags=("orbs",), width=5)
+        self.radius = random.randint(3, 15)
 
     def rand_pos(self):
         sx, sy = self.snake.pos()
@@ -114,7 +147,6 @@ class Orb:
         shake_x, shake_y = noise.perlin2d(frame / ORB_SHAKE_RATE, self.id)
         shaken_x: float = self.x + shake_x * ORB_SHAKE
         shaken_y: float = self.y + shake_y * ORB_SHAKE
-
         sx, sy = self.snake.pos()
         dx: float = sx - shaken_x
         dy: float = sy - shaken_y
@@ -140,8 +172,8 @@ class Orb:
         
         ox = (shaken_x - sx) / sf
         oy = (shaken_y - sy) / sf
-        x = ox + WINDOW_WIDTH/2
-        y = oy + WINDOW_HEIGHT/2
+        x = ox + window_width/2
+        y = oy + window_height/2
         
         r = self.radius / sf
        
@@ -168,8 +200,8 @@ class Background:
         self.tile_width = self.original_tile_width
         self.tile_height = self.original_tile_height
 
-        self.tiles_x = (WINDOW_WIDTH // self.tile_width) + 4
-        self.tiles_y = (WINDOW_HEIGHT // self.tile_height) + 4
+        self.tiles_x = (window_width // self.tile_width) + 4
+        self.tiles_y = (window_height // self.tile_height) + 4
 
         for tile in self.tiles:
             self.canvas.delete(tile)
@@ -194,10 +226,6 @@ class Background:
                 self.tiles.append(tile)
                 self.tile_positions.append([wx, wy])
        
-        self.canvas.tag_lower("background")
-        self.canvas.tag_raise("orbs")
-        self.canvas.tag_raise("snake")
-       
     def draw(self) -> None:
         cam_x, cam_y = self.snake.pos()
         sf = shrink_factor(len(self.snake.positions))
@@ -214,15 +242,15 @@ class Background:
             wx_wrapped = cam_x + ((wx - cam_x + half_w) % grid_w) - half_w
             wy_wrapped = cam_y + ((wy - cam_y + half_h) % grid_h) - half_h
 
-            screen_x = round(WINDOW_WIDTH / 2 + wx_wrapped - cam_x)
-            screen_y = round(WINDOW_HEIGHT / 2 + wy_wrapped - cam_y)
+            screen_x = round(window_width / 2 + wx_wrapped - cam_x)
+            screen_y = round(window_height / 2 + wy_wrapped - cam_y)
 
             self.canvas.moveto(tile, screen_x, screen_y)
 
 def on_motion(event: tk.Event) -> None:
     global mouse_x, mouse_y
-    mouse_x = event.x - WINDOW_WIDTH / 2
-    mouse_y = event.y - WINDOW_HEIGHT / 2
+    mouse_x = event.x - window_width / 2
+    mouse_y = event.y - window_height / 2
 
 def quit_game(event: tk.Event):
     event.widget.quit()
@@ -240,7 +268,7 @@ def main() -> None:
     root.bind("q", quit_game)
     root.bind("Q", quit_game)
 
-    canvas = tk.Canvas(root, width=WINDOW_WIDTH, height=WINDOW_HEIGHT,
+    canvas = tk.Canvas(root, width=window_width, height=window_height,
                        bg="black")
     canvas.pack()
    
@@ -269,6 +297,7 @@ def main() -> None:
             orb.draw()
         snake.step()
         snake.draw()
+        set_z_height(canvas)
        
         frame += 1
         root.after(frame_interval, update)
