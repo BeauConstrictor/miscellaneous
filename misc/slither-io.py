@@ -1,4 +1,3 @@
-from PIL import Image, ImageTk
 import tkinter as tk
 import random
 import math
@@ -41,7 +40,7 @@ class Snake:
         self.canvas = canvas
         self.positions = [(0, i*5) for i in range(20)]
         self.add_length = 0
-        
+       
         self.segments = [
             canvas.create_oval(0,0,0,0, fill=rgb_to_hex(SNAKE_COLOURS[0]), outline="")
             for _ in self.positions
@@ -58,7 +57,7 @@ class Snake:
             self.positions.pop(0)
             seg = self.segments.pop(0)
             self.canvas.delete(seg)
-        
+       
         px, py = self.pos()
         offset = normalise((mouse_x, mouse_y), 200*dt)
         new_pos = (px + offset[0], py + offset[1])
@@ -116,10 +115,14 @@ class Orb:
         sx, sy = self.snake.pos()
 
         sf = shrink_factor(len(self.snake.positions))        
-        x = WINDOW_WIDTH/2 + (self.x - sx) / sf
-        y = WINDOW_HEIGHT/2 + (self.y - sy) / sf
-        r = self.radius / sf
         
+        ox = (self.x - sx) / sf
+        oy = (self.y - sy) / sf
+        x = ox + WINDOW_WIDTH/2
+        y = oy + WINDOW_HEIGHT/2
+        
+        r = self.radius / sf
+       
         self.canvas.coords(self.id,
                            x - r, y - r,
                            x + r, y + r,)
@@ -132,7 +135,7 @@ class Background:
         self.original_tile_width = BG_WIDTH
         self.original_tile_height = BG_HEIGHT
 
-        self.pil_tile = Image.open(".slitherio/bg.png")
+        self.tile_image = tk.PhotoImage(file='misc/.slitherio/bg.png')
 
         self.tiles = []
         self.tile_positions = []
@@ -142,8 +145,6 @@ class Background:
     def create_tiles(self) -> None:
         self.tile_width = self.original_tile_width
         self.tile_height = self.original_tile_height
-
-        self.tile_image = ImageTk.PhotoImage(self.pil_tile)
 
         self.tiles_x = (WINDOW_WIDTH // self.tile_width) + 4
         self.tiles_y = (WINDOW_HEIGHT // self.tile_height) + 4
@@ -170,14 +171,16 @@ class Background:
 
                 self.tiles.append(tile)
                 self.tile_positions.append([wx, wy])
-        
+       
         self.canvas.tag_lower("background")
         self.canvas.tag_raise("orbs")
         self.canvas.tag_raise("snake")
-        
+       
     def draw(self) -> None:
         cam_x, cam_y = self.snake.pos()
         sf = shrink_factor(len(self.snake.positions))
+        cam_x /= sf
+        cam_y /= sf
 
         grid_w = self.tile_width * self.tiles_x
         grid_h = self.tile_height * self.tiles_y
@@ -189,8 +192,8 @@ class Background:
             wx_wrapped = cam_x + ((wx - cam_x + half_w) % grid_w) - half_w
             wy_wrapped = cam_y + ((wy - cam_y + half_h) % grid_h) - half_h
 
-            screen_x = round(WINDOW_WIDTH / 2 + wx_wrapped - cam_x / sf)
-            screen_y = round(WINDOW_HEIGHT / 2 + wy_wrapped - cam_y / sf)
+            screen_x = round(WINDOW_WIDTH / 2 + wx_wrapped - cam_x)
+            screen_y = round(WINDOW_HEIGHT / 2 + wy_wrapped - cam_y)
 
             self.canvas.moveto(tile, screen_x, screen_y)
 
@@ -201,18 +204,18 @@ def on_motion(event: tk.Event) -> None:
 
 def main() -> None:
     global dt
-    
+   
     root = tk.Tk()
     root.title("slither.io")
     root.bind("<Motion>", on_motion)
     canvas = tk.Canvas(root, width=WINDOW_WIDTH, height=WINDOW_HEIGHT,
                        bg="black")
     canvas.pack()
-    
+   
     snake = Snake(canvas)
     bg = Background(canvas, snake)
     orbs = [Orb(canvas, snake) for _ in range(100)]
-    
+   
     canvas.tag_lower("background")
     canvas.tag_raise("orbs")
     canvas.tag_raise("snake")
@@ -222,7 +225,7 @@ def main() -> None:
 
     def update() -> None:
         nonlocal last_time
-        
+       
         now = time.time()
         dt = now - last_time
         last_time = now
@@ -233,7 +236,7 @@ def main() -> None:
             orb.draw()
         snake.step()
         snake.draw()
-        
+       
         root.after(frame_interval, update)
 
     update()
