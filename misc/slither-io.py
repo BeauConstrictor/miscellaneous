@@ -3,18 +3,26 @@ import random
 import math
 import time
 
+import noise
 
-SNAKE_COLOURS = [(0, 50, 0), (0, 204, 0), (0, 230, 0)]
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
-
+SNAKE_COLOURS = [(100, 50, 0), (240, 160, 0), (255, 200, 0)]
+WINDOW_WIDTH = 1920
+WINDOW_HEIGHT = 1080
 BG_WIDTH = 599
 BG_HEIGHT = 519
+TARGET_FPS = 50
+ORB_SPAWN_RADIUS = 1000
+ORB_COUNT = 80
+SPEED = 250
+ORB_LENGTH_ADD = 0.5
+ORB_SHAKE = 10
+ORB_SHAKE_RATE = 10
+ORB_ATTRACTION = 0.2
+ORB_ATTRACTION_DIST = 50
 
 mouse_x, mouse_y = 0, 0
 dt = 0.016
-
-TARGET_FPS = 60
+frame = 0
 
 def snake_radius(segment_count: int) -> float:
     return 10 + segment_count / 30
@@ -59,10 +67,10 @@ class Snake:
             self.canvas.delete(seg)
        
         px, py = self.pos()
-        offset = normalise((mouse_x, mouse_y), 200*dt)
+        offset = normalise((mouse_x, mouse_y), SPEED*dt)
         new_pos = (px + offset[0], py + offset[1])
         self.positions.append(new_pos)
-        seg = self.canvas.create_oval(0,0,0,0, fill=rgb_to_hex(SNAKE_COLOURS[1]), outline="", tags=("snake",))
+        seg = self.canvas.create_oval(0,0,0,0, fill=rgb_to_hex(SNAKE_COLOURS[1]), outline=rgb_to_hex(SNAKE_COLOURS[2]), tags=("snake",))
         self.segments.append(seg)
 
     def draw(self):
@@ -94,30 +102,44 @@ class Orb:
         self.snake = snake
         self.rand_pos()
         self.color = (random.randint(51, 153), random.randint(51, 153), random.randint(51, 153))
-        self.radius = random.randint(2, 10)
+        self.radius = random.randint(2, 15)
         self.id = canvas.create_oval(0,0,0,0, fill=rgb_to_hex(self.color), outline="", tags=("orbs",))
 
     def rand_pos(self):
         sx, sy = self.snake.pos()
-        self.x = random.uniform(sx - 1000, sx + 1000)
-        self.y = random.uniform(sy - 1000, sy + 1000)
+        self.x = random.uniform(sx - ORB_SPAWN_RADIUS, sx + ORB_SPAWN_RADIUS)
+        self.y = random.uniform(sy - ORB_SPAWN_RADIUS, sy + ORB_SPAWN_RADIUS)
 
     def step(self):
+        shake_x, shake_y = noise.perlin2d(frame / ORB_SHAKE_RATE, self.id)
+        shaken_x: float = self.x + shake_x * ORB_SHAKE
+        shaken_y: float = self.y + shake_y * ORB_SHAKE
+
         sx, sy = self.snake.pos()
-        dist = math.sqrt((sx - self.x)**2 + (sy - self.y)**2)
-        if dist < 10 + snake_radius(len(self.snake.positions))/2:
-            self.snake.add_length += math.floor(self.radius)
+        dx: float = sx - shaken_x
+        dy: float = sy - shaken_y
+        dist: float = math.sqrt(dx**2 + dy**2)
+
+        if dist < 10 + snake_radius(len(self.snake.positions)) / 2:
+            self.snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
             self.rand_pos()
-        if dist > 1000:
+        elif dist < ORB_ATTRACTION_DIST:
+            attract_strength: float = ORB_ATTRACTION
+            self.x += dx * attract_strength
+            self.y += dy * attract_strength
+        elif dist > ORB_SPAWN_RADIUS:
             self.rand_pos()
 
     def draw(self):
+        shake_x, shake_y = noise.perlin2d(frame/ORB_SHAKE_RATE, self.id)
+        shaken_x, shaken_y = self.x + shake_x*ORB_SHAKE, self.y + shake_y*ORB_SHAKE
+        
         sx, sy = self.snake.pos()
 
-        sf = shrink_factor(len(self.snake.positions))        
+        sf = shrink_factor(len(self.snake.positions))
         
-        ox = (self.x - sx) / sf
-        oy = (self.y - sy) / sf
+        ox = (shaken_x - sx) / sf
+        oy = (shaken_y - sy) / sf
         x = ox + WINDOW_WIDTH/2
         y = oy + WINDOW_HEIGHT/2
         
@@ -202,19 +224,29 @@ def on_motion(event: tk.Event) -> None:
     mouse_x = event.x - WINDOW_WIDTH / 2
     mouse_y = event.y - WINDOW_HEIGHT / 2
 
+def quit_game(event: tk.Event):
+    event.widget.quit()
+
 def main() -> None:
     global dt
    
     root = tk.Tk()
+    
     root.title("slither.io")
+    root.geometry("1920x1080")
+    root.attributes("-fullscreen", True)
+
     root.bind("<Motion>", on_motion)
+    root.bind("q", quit_game)
+    root.bind("Q", quit_game)
+
     canvas = tk.Canvas(root, width=WINDOW_WIDTH, height=WINDOW_HEIGHT,
                        bg="black")
     canvas.pack()
    
     snake = Snake(canvas)
     bg = Background(canvas, snake)
-    orbs = [Orb(canvas, snake) for _ in range(100)]
+    orbs = [Orb(canvas, snake) for _ in range(ORB_COUNT)]
    
     canvas.tag_lower("background")
     canvas.tag_raise("orbs")
@@ -225,6 +257,7 @@ def main() -> None:
 
     def update() -> None:
         nonlocal last_time
+        global frame
        
         now = time.time()
         dt = now - last_time
@@ -237,6 +270,7 @@ def main() -> None:
         snake.step()
         snake.draw()
        
+        frame += 1
         root.after(frame_interval, update)
 
     update()
