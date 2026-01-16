@@ -22,6 +22,10 @@ ORB_COLORS = [
     (255, 0, 255),
     (0, 204, 204) 
 ]
+SUFFiXES = {
+    "1": "st", "2": "nd", "3": "rd", "4": "th", "5": "th", "6": "th", "7": "th", "8": "th",
+    "9": "th", "0": "th",
+}
 BG_WIDTH = 599
 BG_HEIGHT = 519
 TARGET_FPS = 60
@@ -44,6 +48,12 @@ STARTING_LENGTH = (20, 200)
 UI_PADDING = 20
 CORPSE_USELESSNESS = 12
 CORPSE_SPREAD = 20
+MINIMAP_SIZE = 200
+MINIMAP_PADDING = 20
+MINIMAP_RADIUS = 20000
+PLACEMENT_UPDATE_INTERVAL = 100
+
+PLAYER_SPOT_SIZE = 6
 
 def snake_radius(segment_count: int) -> float:
     return 10 + segment_count / 10
@@ -108,8 +118,6 @@ class Snake:
         pass
     
     def step(self) -> None:
-        global mouse_x, mouse_y, dt
-        
         new_oval = None
         
         if self.add_length > 0:
@@ -191,6 +199,11 @@ class AiSnake(Snake):
         super().__init__(game)
         self.player = game.snake
         self.id = random.randint(0, 999)
+        
+        self.game.ui.heads[self] = (
+            self.game.ui.minimap.create_oval(0,0,0,0, fill=self.accent, outline=self.primary),
+            self
+        )
 
     def move(self) -> tuple[float, float]:
         move_x, move_y = normalise(noise.perlin2d(self.game.frame*AI_CRAZINESS,
@@ -328,20 +341,59 @@ class Orb:
 class UserInterface:
     def __init__(self, game: "Game") -> None:
         self.canvas = game.canvas
-        self.snake = game.snake
+        self.game = game
+
+        self.minimap = tk.Canvas(
+            self.game.root,
+            width=MINIMAP_SIZE,
+            height=MINIMAP_SIZE,
+            bg="#111",
+            highlightthickness=2,
+            highlightbackground="white"
+        )
+        self.minimap.place(
+            relx=1.0,
+            rely=1.0,
+            x=-MINIMAP_PADDING,
+            y=-MINIMAP_PADDING,
+            anchor="se"
+        )
         
-        self.text = self.canvas.create_text(game.window_width-UI_PADDING,
-                                            game.window_height-UI_PADDING,
-                                            text=self.get_text(),
-                                            font=("Arial", 24), fill="white",
-                                            anchor="se", tags=("ui",))
+        self.crosshair = self.minimap.create_text(MINIMAP_SIZE/2, MINIMAP_SIZE/2,
+                                                  text="+", fill="white",
+                                                  font=("Arial", 16))
         
-    def get_text(self) -> None:
-        return f"Length: {len(self.snake.positions)}"
-    
+        self.placement = self.minimap.create_text(UI_PADDING, UI_PADDING,
+                                                  text="1st", fill="white",
+                                                  font=("Arial", 12))
+        
+        self.heads = {}
+        
     def draw(self) -> None:
-        self.canvas.itemconfig(self.text, text=self.get_text())
-        self.canvas.tag_raise(self.text)
+        px, py = self.game.snake.pos()
+
+        scale = MINIMAP_SIZE / (MINIMAP_RADIUS * 2)
+
+        for oval, snake in self.heads.values():
+            sx, sy = snake.pos()
+
+            dx = sx - px
+            dy = py - sy
+
+            x = MINIMAP_SIZE / 2 + dx * scale
+            y = MINIMAP_SIZE / 2 + dy * scale
+
+            if 0 <= x <= MINIMAP_SIZE and 0 <= y <= MINIMAP_SIZE:
+                self.minimap.moveto(oval, x, y)
+                self.minimap.itemconfigure(oval, state="normal")
+            else:
+                self.minimap.itemconfigure(oval, state="hidden")
+                
+        if self.game.frame % PLACEMENT_UPDATE_INTERVAL == 0:
+            snakes = sorted(self.game.ais + [self.game.snake], key=lambda s: len(s.positions), reverse=True)
+            place = snakes.index(self.game.snake)
+            ordinal_suffix = SUFFiXES[str(place)[-1]]
+            self.minimap.itemconfig(self.placement, text=str(place) + ordinal_suffix)
 
 class Background:
     def __init__(self, game: "Game") -> None:
@@ -388,12 +440,9 @@ class Background:
 
                 self.tiles.append(tile)
                 self.tile_positions.append([wx, wy])
-       
+    
     def draw(self) -> None:
         cam_x, cam_y = self.snake.pos()
-        sf = shrink_factor(len(self.snake.positions))
-        cam_x /= sf
-        cam_y /= sf
 
         grid_w = self.tile_width * self.tiles_x
         grid_h = self.tile_height * self.tiles_y
@@ -405,11 +454,15 @@ class Background:
             wx_wrapped = cam_x + ((wx - cam_x + half_w) % grid_w) - half_w
             wy_wrapped = cam_y + ((wy - cam_y + half_h) % grid_h) - half_h
 
-            screen_x = round(self.game.window_width / 2 + wx_wrapped - cam_x)
-            screen_y = round(self.game.window_height / 2 + wy_wrapped - cam_y)
+            screen_x = round(
+                self.game.window_width / 2 + (wx_wrapped - cam_x)
+            )
+            screen_y = round(
+                self.game.window_height / 2 + (wy_wrapped - cam_y)
+            )
 
             self.canvas.moveto(tile, screen_x, screen_y)
-
+ 
 class Game:
     def __init__(self) -> None:
         temp_root = tk.Tk()
@@ -435,11 +488,11 @@ class Game:
                                 height=self.window_height, bg="black")
         self.canvas.pack()
     
+        self.ui = UserInterface(self)
         self.snake = PlayerSnake(self)
         self.ais = [AiSnake(self) for _ in range(AI_COUNT)]
         self.bg = Background(self)
         self.orbs = [Orb(self) for _ in range(ORB_COUNT)]
-        self.ui = UserInterface(self)
     
         set_z_height(self.canvas)
 
