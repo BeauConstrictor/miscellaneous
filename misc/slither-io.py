@@ -3,6 +3,7 @@
 # script.
 
 import tkinter as tk
+from tkinter import messagebox
 import random
 import math
 import time
@@ -25,13 +26,13 @@ BG_WIDTH = 599
 BG_HEIGHT = 519
 TARGET_FPS = 60
 ORB_SPAWN_RADIUS = 1000
-SPAWN_RADIUS = 1000
+SPAWN_RADIUS = 10000
 AI_CRAZINESS = 0.01
 AI_COUNT = 20
 ORB_COUNT = 80
 SPEED = 250
 SPRINT_SPEED = 350
-ORB_LENGTH_ADD = 0.5
+ORB_LENGTH_ADD = 0.2
 ORB_SHAKE = 10
 ORB_SHAKE_RATE = 20
 ORB_ATTRACTION = 0.3
@@ -41,6 +42,8 @@ BIG_ORB_CHANCE = 150
 BIG_ORB_SHAKE_RATE = 70
 STARTING_LENGTH = (20, 200)
 UI_PADDING = 20
+CORPSE_USELESSNESS = 12
+CORPSE_SPREAD = 20
 
 def snake_radius(segment_count: int) -> float:
     return 10 + segment_count / 10
@@ -131,7 +134,7 @@ class Snake:
         self.extra_step()
     
     def draw(self) -> None:
-        sf = shrink_factor(len(self.positions))
+        sf = shrink_factor(len(self.game.snake.positions))
         radius = snake_radius(len(self.positions)) / sf
 
         for i, (seg, (x, y)) in enumerate(zip(self.segments, self.positions)):
@@ -171,6 +174,18 @@ class PlayerSnake(Snake):
         x, y = self.pos()
         return world_pos[0] - x, world_pos[1] - y
 
+    def extra_step(self) -> None:
+        for s in self.game.ais:
+            for p in s.positions:
+                dist, _,_ = distance(self.pos(), p)
+                
+                bot_r = snake_radius(len(s.positions))
+                plr_r = snake_radius(len(self.positions))
+                
+                if dist < bot_r + plr_r:
+                    messagebox.showerror("Game Over", "You ran into another snake.")
+                    quit(0)
+
 class AiSnake(Snake):
     def __init__(self, game: "Game") -> None:
         super().__init__(game)
@@ -183,6 +198,13 @@ class AiSnake(Snake):
                                    SPEED*self.game.dt)
         x, y = self.pos()
         return x + move_x, y + move_y
+    
+    def kill(self) -> None:
+        if self not in self.game.ais: return
+        
+        for s in self.segments:
+            self.canvas.delete(s)
+        self.game.ais.remove(self)
     
     def initial_len(self) -> int:
         return random.randint(STARTING_LENGTH[0], STARTING_LENGTH[1])    
@@ -198,40 +220,64 @@ class AiSnake(Snake):
         for p in self.player.positions:
             dist, _,_ = distance(self.pos(), p)
             
-            sf = shrink_factor(len(self.player.positions))
-            bot_r = snake_radius(len(self.positions)) / sf
-            plr_r = snake_radius(len(self.player.positions)) / sf
+            bot_r = snake_radius(len(self.positions))
+            plr_r = snake_radius(len(self.player.positions))
             
             if dist < bot_r + plr_r:
-                for i, _ in self.positions:
-                    o = Orb(self.game)
-                    o.x, o.y = p[0], p[1]
+                for i, seg_pos in enumerate(self.positions):
+                    if i % CORPSE_USELESSNESS != 0: continue
+                    ox = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
+                    oy = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
+                    o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
                     self.game.orbs.append(o)
+                    
+                self.kill()
 
 class Orb:
-    def __init__(self, game: "Game") -> None:
+    def __init__(self, game: "Game", pos: tuple[float, float]|None = None) -> None:
         self.canvas = game.canvas
         self.snakes: list[Snake] = game.ais + [game.snake]
         self.player = game.snake
-        self.rand_pos()
-        self.color = random.choice(ORB_COLORS)
         self.game = game
-
+        
+        self.color = random.choice(ORB_COLORS)
+        
+        
+        self.is_temp = pos is not None
+        if self.is_temp:
+            self.x, self.y = pos
+        else:
+            self.rand_pos()
+            
+        
         self.is_big = random.choice([False] * BIG_ORB_CHANCE + [True])
         if self.is_big:
             self.radius = 30
         else:
             self.radius = random.randint(3, 15)
-            
+        
         tag = "big_orbs" if self.is_big else "orbs"
         self.id = self.canvas.create_oval(0,0,0,0, fill=rgb_to_hex(self.color),
                                      outline=rgb_to_hex([max(0, c-20) for c in self.color]),
                                      tags=(tag,), width=5)
         
     def rand_pos(self) -> None:
+        r = self.game.visible_radius()
         sx, sy = self.player.pos()
-        self.x = random.uniform(sx - ORB_SPAWN_RADIUS, sx + ORB_SPAWN_RADIUS)
-        self.y = random.uniform(sy - ORB_SPAWN_RADIUS, sy + ORB_SPAWN_RADIUS)
+        self.x = random.uniform(sx - r, sx + r)
+        self.y = random.uniform(sy - r, sy + r)
+        
+    def regen(self) -> None:
+        if self.is_temp:
+            self.canvas.delete(self.id)
+            return
+        
+        self.is_big = random.choice([False] * BIG_ORB_CHANCE + [True])
+        if self.is_big:
+            self.radius = 30
+        else:
+            self.radius = random.randint(3, 15)
+        self.rand_pos()
 
     def step(self) -> None:
         shake_rate = ORB_SHAKE_RATE
@@ -251,15 +297,14 @@ class Orb:
 
             if dist < 10 + snake_radius(len(snake.positions)) / 2:
                 snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
-                self.rand_pos()
+                self.regen()
             elif dist < ORB_ATTRACTION_DIST:
                 attract_strength = ORB_ATTRACTION
                 self.x += dx * attract_strength
                 self.y += dy * attract_strength
 
-
-        if distance(self.player.pos(), (shaken_x, shaken_y))[0] > ORB_SPAWN_RADIUS:
-            self.rand_pos()
+        if distance(self.player.pos(), (shaken_x, shaken_y))[0] > self.game.visible_radius() and not self.is_temp:
+            self.regen()
 
     def draw(self) -> None:
         shake_x, shake_y = noise.perlin2d(self.game.frame/ORB_SHAKE_RATE, self.id)
@@ -404,6 +449,12 @@ class Game:
         self.mouse_down = False
         self.dt = 0.016
         self.frame = 0
+    
+    def visible_radius(self) -> float:
+        sf = shrink_factor(len(self.snake.positions))
+        hw = self.window_width / 2
+        hh = self.window_height / 2
+        return sf * math.sqrt(hw**2 + hh**2)
         
     def on_motion(self, event: tk.Event) -> None:
         self.mouse_x = event.x - self.window_width / 2
