@@ -12,7 +12,7 @@ import json
 
 import noise
 
-ORB_COLORS = [
+PALETTE = [
     (255, 0, 0),  
     (255, 102, 0),
     (255, 255, 0),
@@ -47,6 +47,7 @@ BIG_ORB_CHANCE = 150
 BIG_ORB_SHAKE_RATE = 70
 STARTING_LENGTH = (20, 300)
 UI_PADDING = 20
+PAUSE_BUTTON_PADDING = 100
 CORPSE_USELESSNESS = 12
 CORPSE_SPREAD = 20
 MINIMAP_SIZE = 200
@@ -116,7 +117,7 @@ class Snake:
         self.add_length = 0
         self.game = game
 
-        self.color = random.choice(ORB_COLORS)
+        self.color = random.choice(PALETTE)
         
         self.primary = rgb_to_hex(self.color)
         self.accent = rgb_to_hex([min(255, max(c-50, 0)) for c in self.color])
@@ -317,7 +318,7 @@ class Orb:
         self.player = game.snake
         self.game = game
         
-        self.color = random.choice(ORB_COLORS)
+        self.color = random.choice(PALETTE)
         
         
         self.is_temp = pos is not None
@@ -599,6 +600,9 @@ class Game:
         self.window_height = temp_root.winfo_screenheight()
         temp_root.destroy()
         
+        self.paused = False
+        self.pause_text = None
+        
         self.frame_interval = math.floor(1000/TARGET_FPS)
     
         self.root = tk.Tk()
@@ -634,6 +638,18 @@ class Game:
         self.root.bind("Q", self.quit_game)
         self.root.bind("n", self.ui.toggle_dev)
         self.root.bind("N", self.ui.toggle_dev)
+        self.root.bind("<space>", self.pause)
+        
+    def pause(self, _=None) -> None:
+        self.paused = not self.paused
+        
+        if self.paused:
+            self.pause_text = self.canvas.create_text(self.window_width/2, PAUSE_BUTTON_PADDING,
+                                                      text="PAUSED",
+                                                      font=("Arial", 24),
+                                                      fill="white")
+        else:
+            self.canvas.delete(self.pause_text)
     
     def visible_radius(self) -> float:
         sf = shrink_factor(len(self.snake.positions))
@@ -656,6 +672,11 @@ class Game:
         quit(0)
 
     def update(self):
+        if self.paused:
+            self.last_time = time.perf_counter()
+            self.root.after(16, self.update)
+            return
+            
         now = time.perf_counter()
 
         self.dt = min(0.05, now - self.last_time)
@@ -681,7 +702,6 @@ class Game:
             self.next_frame_time = now
 
         delay = max(1, int((self.next_frame_time - now) * 1000))
-
 
         self.frame += 1
         self.root.after(delay, self.update)
