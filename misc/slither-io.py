@@ -38,7 +38,7 @@ SUFFIXES = {
 }
 BG_WIDTH = 599
 BG_HEIGHT = 519
-TARGET_FPS = 30
+TARGET_FPS = 120
 SPAWN_RADIUS = 3000
 AI_COUNT = 19
 ORB_COUNT = 80
@@ -136,7 +136,7 @@ class Snake:
         ]
         
         self.name = name
-        self.nametag = self.canvas.create_text(0, 0, text=self.name,
+        self.nametag = self.canvas.create_text(-1000, -1000, text=self.name,
                                                fill="white",
                                                font=("Arial", 12))
 
@@ -181,29 +181,37 @@ class Snake:
     def draw(self) -> None:
         sf = shrink_factor(len(self.game.snake.positions))
         radius = snake_radius(len(self.positions)) / sf
+        px, py = self.game.snake.pos()
 
         for i, (seg, (x, y)) in enumerate(zip(self.segments, self.positions)):
-            rel_x, rel_y = self.cam_pos((x, y))
-            shrunk_x = self.game.window_width/2 + rel_x / sf
-            shrunk_y = self.game.window_height/2 + rel_y / sf
+            rel_x = (x - px)/sf + self.game.window_width/2
+            rel_y = (y - py)/sf + self.game.window_height/2
 
-            self.canvas.coords(seg,
-                            shrunk_x - radius, shrunk_y - radius,
-                            shrunk_x + radius, shrunk_y + radius)
-            
-            if i == len(self.positions)-1:
-                self.canvas.itemconfig(seg,
-                    fill=self.primary, outline=self.primary)
-                self.canvas.coords(self.nametag, shrunk_x,
-                                   shrunk_y-NAMETAG_HEIGHT-radius)
-                self.canvas.tag_raise(seg)
-                self.canvas.tag_raise(self.nametag)
-            elif (i+1) % 6 == 0:
-                self.canvas.itemconfig(seg,
-                    fill=self.primary, outline=self.primary)
+            if rel_x + radius < 0 or rel_x - radius > self.game.window_width \
+            or rel_y + radius < 0 or rel_y - radius > self.game.window_height:
+                self.canvas.itemconfigure(seg, state="hidden")
+                continue
             else:
-                self.canvas.itemconfig(seg,
-                    fill=self.accent, outline=self.primary)
+                self.canvas.itemconfigure(seg, state="normal")
+
+                self.canvas.coords(seg,
+                                rel_x - radius, rel_y - radius,
+                                rel_x + radius, rel_y + radius)
+                
+                if i == len(self.positions)-1:
+                    self.canvas.itemconfig(seg,
+                        fill=self.primary, outline=self.primary)
+                    self.canvas.coords(self.nametag, rel_x,
+                                    rel_y-NAMETAG_HEIGHT-radius)
+                    self.canvas.tag_raise(seg)
+                    self.canvas.tag_raise(self.nametag)
+                elif (i+1) % 6 == 0:
+                    self.canvas.itemconfig(seg,
+                        fill=self.primary, outline=self.primary)
+                else:
+                    self.canvas.itemconfig(seg,
+                        fill=self.accent, outline=self.primary)
+
         
         x, y = self.pos()
 
