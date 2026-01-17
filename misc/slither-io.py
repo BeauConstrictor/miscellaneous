@@ -457,7 +457,10 @@ class Background:
                 self.tile_positions.append([wx, wy])
     
     def draw(self) -> None:
+        sf = shrink_factor(len(self.snake.positions))
         cam_x, cam_y = self.snake.pos()
+        cam_x /= sf
+        cam_y /= sf
 
         grid_w = self.tile_width * self.tiles_x
         grid_h = self.tile_height * self.tiles_y
