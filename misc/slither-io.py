@@ -58,7 +58,7 @@ DEBUG_UPDATE_INTERVAL = 15
 MAX_EATEN_AT_ONCE = 30
 ORBS_PER_CORPSE_SEGMENT = 3
 LEADERBOARD_SIZE = 3
-DEBUG_IS_DEFAULT = True
+DEBUG_IS_DEFAULT = False
 AI_PERLIN_SWAY = 0.05
 AI_TURN_SPEED = 0.1
 AI_REPEL_WEIGHT = 1.0
@@ -435,29 +435,20 @@ class UserInterface:
                                                   text="1st", fill="white",
                                                   font=("Arial", 12))
         
+        self.text = self.canvas.create_text(UI_PADDING, UI_PADDING,
+                                            text=f"",
+                                            fill="white",
+                                            font=("Arial", 12))
         
         self.heads = {}
         
-        self.debug_text = None
-        self.debug_text_content = ""
-        self.dev_mode = True
-        self.toggle_dev()
-        if DEBUG_IS_DEFAULT: self.toggle_dev()
+        self.text_content = ""
+        self.dev_mode = DEBUG_IS_DEFAULT
         
     def toggle_dev(self, _=None) -> None:
         self.dev_mode = not self.dev_mode
-        
-        if self.dev_mode:        
-            self.debug_text = self.canvas.create_text(UI_PADDING, UI_PADDING,
-                                                       text=f"",
-                                                       fill="white",
-                                                       font=("Arial", 12))
-        else:
-            if self.debug_text is not None:
-                self.canvas.delete(self.debug_text)
-                self.debug_text = None
                 
-    def get_debug_text(self) -> str:
+    def generate_text(self) -> str:
         fps = round(1/self.game.dt)
         pos = self.game.snake.pos()
         
@@ -465,18 +456,22 @@ class UserInterface:
         for a in self.game.ais:
             segments += len(a.positions)
         
-        text = f"Debug Menu (hide with N):\n\n" \
-               f"FPS: {fps}\n" \
-               f"FPS Cap: {TARGET_FPS}\n"\
-               f"Digesting: {self.game.snake.add_length}\n"\
-               f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
-               f"Length: {len(self.game.snake.positions)} (in all snakes: {segments})\n"\
-               f"Bots: {len(self.game.ais)}\n"\
-               f"Frame: {self.game.frame}\n"\
-               f"Delta Time: {self.game.dt}\n"\
-               f"Zoom Out: {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
-               f"On Screen: {len(self.canvas.find_all())} objects (no culling)\n"\
-               f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
+        text = ""
+        
+        if self.dev_mode:
+            text = f"Debug Menu (hide with N):\n\n" \
+                   f"FPS: {fps}\n" \
+                   f"FPS Cap: {TARGET_FPS}\n"\
+                   f"Digesting: {self.game.snake.add_length}\n"\
+                   f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
+                   f"Length: {len(self.game.snake.positions)} (in all snakes: {segments})\n"\
+                   f"Bots: {len(self.game.ais)}\n"\
+                   f"Frame: {self.game.frame}\n"\
+                   f"Delta Time: {self.game.dt}\n"\
+                   f"Zoom Out: {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
+                   f"On Screen: {len(self.canvas.find_all())} objects (no culling)\n"\
+                   f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
+                   f"\n"
                    
         leaderboard = sorted(self.game.ais + [self.game.snake],
                      key=lambda s: len(s.positions), reverse=True)
@@ -487,7 +482,7 @@ class UserInterface:
         trimmed = leaderboard[start:end]
 
         for i, s in enumerate(trimmed, start=start):
-            text += f"\n{ordinal_word(i+1)}: {s.name}"
+            text += f"{ordinal_word(i+1)}: {s.name}\n"
         
         return text
         
@@ -516,13 +511,12 @@ class UserInterface:
             place = snakes.index(self.game.snake) + 1
             self.minimap.itemconfig(self.placement, text=ordinal_word(place))
             
-        if self.dev_mode and self.game.frame % DEBUG_UPDATE_INTERVAL == 0:
-            self.debug_text_content = self.get_debug_text()
+        if self.game.frame % DEBUG_UPDATE_INTERVAL == 0:
+            self.text_content = self.generate_text()
             
-        if self.debug_text is not None:
-            self.canvas.itemconfig(self.debug_text, text=self.debug_text_content)
-            self.canvas.moveto(self.debug_text, UI_PADDING, UI_PADDING)
-            self.canvas.tag_raise(self.debug_text)
+        self.canvas.itemconfig(self.text, text=self.text_content)
+        self.canvas.moveto(self.text, UI_PADDING, UI_PADDING)
+        self.canvas.tag_raise(self.text)
 
 class Background:
     def __init__(self, game: "Game") -> None:
