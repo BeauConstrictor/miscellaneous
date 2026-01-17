@@ -167,6 +167,14 @@ class Snake:
 class PlayerSnake(Snake):
     def __init__(self, game: "Game") -> None:
         super().__init__(game, name="Player")
+        
+        self.debug_grow = False
+        if ALLOW_DEBUG_CHEATS:
+            self.game.root.bind("<KeyPress>", self.keypress)
+        
+    def keypress(self, e: tk.Event) -> None:
+        if e.char == "g":
+            self.debug_grow = not self.debug_grow
 
     def move(self) -> tuple[float, float]:
         speed = SPRINT_SPEED if self.game.mouse_down else SPEED
@@ -176,7 +184,9 @@ class PlayerSnake(Snake):
         return (x + offset[0], y + offset[1])
     
     def shorten_rate(self) -> int:
-        return 2 if self.game.mouse_down and self.game.frame % 2 == 0 and len(self.positions) > STARTING_LENGTH[0] else 1
+        if self.debug_grow:
+            return 0
+        return SPRINT_LENGTH_LOSS if self.game.mouse_down and self.game.frame % 2 == 0 and len(self.positions) > STARTING_LENGTH[0] else 1
 
     def cam_pos(self, world_pos: tuple[float, float]) -> tuple[float, float]:
         x, y = self.pos()
@@ -201,6 +211,9 @@ class AiSnake(Snake):
         super().__init__(game,
                          name=random.choice(first_names) + " " +
                               random.choice(surnames))
+        
+        self.dead = False
+        
         self.player = game.snake
         self.id = random.randint(0, 999)
 
@@ -244,6 +257,7 @@ class AiSnake(Snake):
             self.canvas.delete(s)
         self.canvas.delete(self.nametag)
         self.game.ais.remove(self)
+        self.dead = True
     
     def initial_len(self) -> int:
         return random.randint(STARTING_LENGTH[0], STARTING_LENGTH[1])    
@@ -313,6 +327,7 @@ class Orb:
     def regen(self) -> None:
         if self.is_temp:
             self.canvas.delete(self.id)
+            self.game.orbs.remove(self)
             return
         
         self.is_big = random.choice([False] * BIG_ORB_CHANCE + [True])
@@ -476,6 +491,9 @@ class UserInterface:
                 "Zoom out: Right-click\n"\
                 "Debug Menu: N\n"\
                 "Quit: Q\n"\
+                    
+        if ALLOW_DEBUG_CHEATS:
+            text += "Grow: G\n"\
         
         return text
         
@@ -484,7 +502,15 @@ class UserInterface:
 
         scale = MINIMAP_SIZE / (MINIMAP_RADIUS * 2)
 
+        snakes_to_remove = []
         for oval, snake in self.heads.values():
+            if snake.dead:
+                # can't remove it from the dic
+                # t as we're still iterating
+                snakes_to_remove.append(snake)
+                self.minimap.delete(oval)
+                continue
+            
             sx, sy = snake.pos()
 
             dx = sx - px
@@ -500,6 +526,8 @@ class UserInterface:
                 self.minimap.itemconfigure(oval, state="normal")
             else:
                 self.minimap.itemconfigure(oval, state="hidden")
+        for s in snakes_to_remove: del self.heads[s]
+            
         self.minimap.tag_raise(self.crosshair)
                 
         if self.game.frame % PLACEMENT_UPDATE_INTERVAL == 0:
