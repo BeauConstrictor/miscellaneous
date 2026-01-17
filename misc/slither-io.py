@@ -88,10 +88,6 @@ def distance(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, flo
     dy = a[1] - b[1]
     return math.sqrt(dx**2 + dy**2), dx, dy
 
-def lerp_color(c1: tuple[int, int, int], c2: tuple[int, int, int],
-               t: float) -> tuple[int, int, int]:
-    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
-
 def ordinal_word(cardinal: int) -> str:
     stred = str(cardinal)
     last_digit = stred[-1]
@@ -464,7 +460,8 @@ class UserInterface:
         for a in self.game.ais:
             segments += len(a.positions)
         
-        text = f"FPS: {fps}\n" \
+        text = f"Debug Menu (hide with N):\n\n" \
+               f"FPS: {fps}\n" \
                f"FPS Cap: {TARGET_FPS}\n"\
                f"Digesting: {self.game.snake.add_length}\n"\
                f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
