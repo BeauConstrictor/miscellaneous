@@ -593,6 +593,7 @@ class Game:
         temp_root.destroy()
         
         self.paused = False
+        self.zoomed_out = False
         self.pause_text = None
         
         self.frame_interval = math.floor(1000/TARGET_FPS)
@@ -638,12 +639,12 @@ class Game:
     def zoom_out(self, _=None) -> None:
         global shrink_factor
         shrink_factor = zoomed_out_sf
-        self.paused = True
+        self.zoomed_out = True
         self.draw()
     def zoom_in(self, _=None) -> None:
         global shrink_factor
         shrink_factor = zoomed_in_sf
-        self.paused = False
+        self.zoomed_out = False
         
     def restart(self, _=None) -> None:
         self.root.destroy()
@@ -692,7 +693,7 @@ class Game:
         self.ui.draw()
 
     def update(self):
-        if self.paused:
+        if self.paused or self.zoomed_out:
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
             return

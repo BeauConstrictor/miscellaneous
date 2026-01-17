@@ -53,7 +53,7 @@ def snake_radius(segment_count: int) -> float:
 def zoomed_in_sf(segment_count: int) -> float:
     return segment_count / 400 + 1
 def zoomed_out_sf(segment_count: int) -> float:
-    return 10
+    return 15
 
 def minimap_spot_radius(segment_count: int) -> float:
     return 1 + 9 * (segment_count - 20) / 980
