@@ -183,7 +183,8 @@ class Snake:
             if i == len(self.positions)-1:
                 self.canvas.itemconfig(seg,
                     fill=self.primary, outline=self.primary)
-                self.canvas.coords(self.nametag, shrunk_x, shrunk_y-NAMETAG_HEIGHT)
+                self.canvas.coords(self.nametag, shrunk_x,
+                                   shrunk_y-NAMETAG_HEIGHT-radius)
                 self.canvas.tag_raise(seg)
                 self.canvas.tag_raise(self.nametag)
             elif (i+1) % 6 == 0:
