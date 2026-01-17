@@ -52,6 +52,7 @@ MINIMAP_SIZE = 200
 MINIMAP_PADDING = 20
 MINIMAP_RADIUS = 20000
 PLACEMENT_UPDATE_INTERVAL = 100
+MAX_EATEN_AT_ONCE = 60
 
 PLAYER_SPOT_SIZE = 6
 
@@ -120,6 +121,8 @@ class Snake:
     def step(self) -> None:
         new_oval = None
         
+        if self.add_length > MAX_EATEN_AT_ONCE:
+            self.add_length = MAX_EATEN_AT_ONCE
         if self.add_length > 0:
             self.add_length -= 1
         else:
@@ -401,6 +404,7 @@ class UserInterface:
             place = snakes.index(self.game.snake) + 1
             ordinal_suffix = SUFFiXES[str(place)[-1]]
             self.minimap.itemconfig(self.placement, text=str(place) + ordinal_suffix)
+            self.canvas.moveto(self.fps_counter, UI_PADDING+5, UI_PADDING)
             
         fps = round(1/self.game.dt)
         self.canvas.itemconfig(self.fps_counter, text=f"FPS: {fps}")
@@ -538,11 +542,9 @@ class Game:
     def update(self):
         now = time.perf_counter()
 
-        # Simulation delta (clamped)
         self.dt = min(0.05, now - self.last_time)
         self.last_time = now
 
-        # --- GAME LOGIC ---
         self.bg.draw()
 
         for orb in self.orbs: orb.step()
@@ -553,11 +555,17 @@ class Game:
         for ai in self.ais: ai.draw()
         self.snake.draw()
         self.ui.draw()
-        # -------------------
 
-        # Schedule next frame using FIXED timestep
         self.next_frame_time += 1 / TARGET_FPS
-        delay = max(0, int((self.next_frame_time - time.perf_counter()) * 1000))
+        frame_duration = 1 / TARGET_FPS
+
+        now = time.perf_counter()
+
+        if self.next_frame_time < now - frame_duration:
+            self.next_frame_time = now
+
+        delay = max(1, int((self.next_frame_time - now) * 1000))
+
 
         self.frame += 1
         self.root.after(delay, self.update)
