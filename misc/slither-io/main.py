@@ -208,7 +208,7 @@ class PlayerSnake(Snake):
         x, y = self.pos()
         
         offset = normalise((self.game.mouse_x, self.game.mouse_y), speed * self.game.dt)
-        movement = normalise(lerp_vectors(self.last_movement, offset, PLR_TURN_SPEED), SPEED * self.game.dt)
+        movement = normalise(lerp_vectors(self.last_movement, offset, PLR_TURN_SPEED), speed * self.game.dt)
         self.last_movement = movement
         
         return (x + movement[0], y + movement[1])
