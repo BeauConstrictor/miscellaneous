@@ -84,6 +84,9 @@ def snake_radius(segment_count: int) -> float:
 def shrink_factor(segment_count: int) -> float:
     return segment_count / 400 + 1
 
+def minimap_spot_radius(segment_count: int) -> float:
+    return 1 + 9 * (segment_count - 20) / 980
+
 def normalise(vector: tuple[float, float], length: float) -> tuple[float, float]:
     x, y = vector
     magnitude = math.sqrt(x**2 + y**2)
@@ -195,8 +198,6 @@ class Snake:
                 continue
             else:
                 self.canvas.itemconfig(seg, state="normal")
-                if i == len(self.positions)-1:
-                    self.canvas.itemconfig(self.nametag, state="normal")
 
                 self.canvas.coords(seg,
                                 rel_x - radius, rel_y - radius,
@@ -209,6 +210,7 @@ class Snake:
                     self.canvas.coords(self.nametag, rel_x,
                                     rel_y-NAMETAG_HEIGHT-radius)
                     self.canvas.tag_raise(self.nametag)
+                    self.canvas.itemconfig(self.nametag, state="normal")
                 elif (i+1) % 6 == 0:
                     self.canvas.itemconfig(seg,
                         fill=self.primary, outline=self.primary)
@@ -539,10 +541,13 @@ class UserInterface:
             y = MINIMAP_SIZE / 2 + dy * scale
 
             if 0 <= x <= MINIMAP_SIZE and 0 <= y <= MINIMAP_SIZE:
-                self.minimap.moveto(oval, x, y)
+                radius = round(minimap_spot_radius(len(snake.positions)))
+                self.minimap.coords(oval, x-radius, y-radius,
+                                          x+radius, y+radius)
                 self.minimap.itemconfigure(oval, state="normal")
             else:
                 self.minimap.itemconfigure(oval, state="hidden")
+        self.minimap.tag_raise(self.crosshair)
                 
         if self.game.frame % PLACEMENT_UPDATE_INTERVAL == 0:
             snakes = sorted(self.game.ais + [self.game.snake], key=lambda s: len(s.positions), reverse=True)
