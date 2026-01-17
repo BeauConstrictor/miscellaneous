@@ -2,11 +2,12 @@
 # noise is a small perlin noise lib i wrote which should be placed next to this
 # script.
 
-import tkinter as tk
 from tkinter import messagebox
+import tkinter as tk
 import random
 import math
 import time
+import json
 
 import noise
 
@@ -22,7 +23,8 @@ ORB_COLORS = [
     (255, 0, 255),
     (0, 204, 204) 
 ]
-SUFFiXES = {
+SUFFIXES = {
+    "11": "th", "12": "th", "13": "th",
     "1": "st", "2": "nd", "3": "rd", "4": "th", "5": "th", "6": "th", "7": "th", "8": "th",
     "9": "th", "0": "th",
 }
@@ -30,7 +32,7 @@ BG_WIDTH = 599
 BG_HEIGHT = 519
 TARGET_FPS = 30
 ORB_SPAWN_RADIUS = 1000
-SPAWN_RADIUS = 10000
+SPAWN_RADIUS = 3000
 AI_CRAZINESS = 0.01
 AI_COUNT = 19
 ORB_COUNT = 80
@@ -44,17 +46,25 @@ ORB_ATTRACTION_DIST = 50
 NAMETAG_HEIGHT = 30
 BIG_ORB_CHANCE = 150
 BIG_ORB_SHAKE_RATE = 70
-STARTING_LENGTH = (20, 200)
+STARTING_LENGTH = (20, 300)
 UI_PADDING = 20
 CORPSE_USELESSNESS = 12
 CORPSE_SPREAD = 20
 MINIMAP_SIZE = 200
 MINIMAP_PADDING = 20
-MINIMAP_RADIUS = 20000
+MINIMAP_RADIUS = 5000
 PLACEMENT_UPDATE_INTERVAL = 100
-MAX_EATEN_AT_ONCE = 60
-
+DEBUG_UPDATE_INTERVAL = 15
+MAX_EATEN_AT_ONCE = 30
+ORBS_PER_CORPSE_SEGMENT = 3
 PLAYER_SPOT_SIZE = 6
+LEADERBOARD_SIZE = 3
+DEBUG_IS_DEFAULT = True
+
+with open("misc/.slitherio/names.json", "r") as f:
+    names_json = json.load(f)
+    first_names = names_json["first_names"]
+    surnames = names_json["surnames"]
 
 def snake_radius(segment_count: int) -> float:
     return 10 + segment_count / 10
@@ -75,8 +85,15 @@ def distance(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, flo
     return math.sqrt(dx**2 + dy**2), dx, dy
 
 def lerp_color(c1: tuple[int, int, int], c2: tuple[int, int, int],
-               t: tuple[int, int, int]) -> tuple[int, int, int]:
+               t: float) -> tuple[int, int, int]:
     return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+
+def ordinal_word(cardinal: int) -> str:
+    stred = str(cardinal)
+    last_digit = stred[-1]
+    ordinal_suffix = SUFFIXES[stred] if stred in SUFFIXES else\
+                     SUFFIXES[last_digit]
+    return stred + ordinal_suffix
 
 def rgb_to_hex(c):
     return f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
@@ -89,7 +106,8 @@ def set_z_height(canvas: tk.Canvas) -> None:
     canvas.tag_raise("ui")
 
 class Snake:
-    def __init__(self, game: "Game") -> None:
+    def __init__(self, game: "Game", name = "Snake") -> None:
+        
         self.canvas = game.canvas
         start_x, start_y = random.randint(-SPAWN_RADIUS, SPAWN_RADIUS), random.randint(-SPAWN_RADIUS, SPAWN_RADIUS)
         self.positions = [(start_x, start_y+i*5) for i in range(self.initial_len())]
@@ -105,6 +123,11 @@ class Snake:
             self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
             for _ in self.positions
         ]
+        
+        self.name = name
+        self.nametag = self.canvas.create_text(0, 0, text=self.name,
+                                               fill="white",
+                                               font=("Arial", 12))
 
     def pos(self) -> None:
         return self.positions[-1]
@@ -160,8 +183,10 @@ class Snake:
             if i == len(self.positions)-1:
                 self.canvas.itemconfig(seg,
                     fill=self.primary, outline=self.primary)
+                self.canvas.coords(self.nametag, shrunk_x, shrunk_y-NAMETAG_HEIGHT)
                 self.canvas.tag_raise(seg)
-            elif i % 6 == 0:
+                self.canvas.tag_raise(self.nametag)
+            elif (i+1) % 6 == 0:
                 self.canvas.itemconfig(seg,
                     fill=self.primary, outline=self.primary)
             else:
@@ -172,7 +197,7 @@ class Snake:
 
 class PlayerSnake(Snake):
     def __init__(self, game: "Game") -> None:
-        super().__init__(game)
+        super().__init__(game, name="Player")
 
     def move(self) -> tuple[float, float]:
         speed = SPRINT_SPEED if self.game.mouse_down else SPEED
@@ -202,7 +227,9 @@ class PlayerSnake(Snake):
 
 class AiSnake(Snake):
     def __init__(self, game: "Game") -> None:
-        super().__init__(game)
+        super().__init__(game,
+                         name=random.choice(first_names) + " " +
+                              random.choice(surnames))
         self.player = game.snake
         self.id = random.randint(0, 999)
         
@@ -219,10 +246,9 @@ class AiSnake(Snake):
         return x + move_x, y + move_y
     
     def kill(self) -> None:
-        if self not in self.game.ais: return
-        
         for s in self.segments:
             self.canvas.delete(s)
+        self.canvas.delete(self.nametag)
         self.game.ais.remove(self)
     
     def initial_len(self) -> int:
@@ -247,10 +273,12 @@ class AiSnake(Snake):
                     if i % CORPSE_USELESSNESS != 0: continue
                     ox = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
                     oy = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
-                    o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
-                    self.game.orbs.append(o)
+                    for i in range(ORBS_PER_CORPSE_SEGMENT):
+                        o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
+                        self.game.orbs.append(o)
                     
                 self.kill()
+                return
 
 class Orb:
     def __init__(self, game: "Game", pos: tuple[float, float]|None = None) -> None:
@@ -314,7 +342,7 @@ class Orb:
             snake.pos()
             dist, dx, dy = distance(snake.pos(), (shaken_x, shaken_y))
 
-            if dist < 10 + snake_radius(len(snake.positions)) / 2:
+            if dist < snake_radius(len(snake.positions)) + self.radius:
                 snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
                 self.regen()
             elif dist < ORB_ATTRACTION_DIST:
@@ -373,11 +401,49 @@ class UserInterface:
                                                   text="1st", fill="white",
                                                   font=("Arial", 12))
         
-        self.fps_counter = self.canvas.create_text(UI_PADDING, UI_PADDING,
-                                                   text=f"FPS: {TARGET_FPS}", fill="white",
-                                                   font=("Arial", 12))
         
         self.heads = {}
+        
+        self.debug_text = None
+        self.debug_text_content = ""
+        self.dev_mode = True
+        self.toggle_dev()
+        if DEBUG_IS_DEFAULT: self.toggle_dev()
+        
+    def toggle_dev(self, _=None) -> None:
+        self.dev_mode = not self.dev_mode
+        
+        if self.dev_mode:        
+            self.debug_text = self.canvas.create_text(UI_PADDING, UI_PADDING,
+                                                       text=f"",
+                                                       fill="white",
+                                                       font=("Arial", 12))
+        else:
+            if self.debug_text is not None:
+                self.canvas.delete(self.debug_text)
+                self.debug_text = None
+                
+    def get_debug_text(self) -> str:
+        fps = round(1/self.game.dt)
+        pos = self.game.snake.pos()
+        
+        text = f"FPS: {fps}\n" \
+               f"Digesting: {self.game.snake.add_length}\n"\
+               f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
+               f"Length: {len(self.game.snake.positions)}\n"\
+                   
+        leaderboard = sorted(self.game.ais + [self.game.snake],
+                     key=lambda s: len(s.positions), reverse=True)
+        placement = leaderboard.index(self.game.snake)
+
+        start = max(0, placement - LEADERBOARD_SIZE)
+        end = min(len(leaderboard), placement + LEADERBOARD_SIZE + 1)
+        trimmed = leaderboard[start:end]
+
+        for i, s in enumerate(trimmed, start=start):
+            text += f"\n{ordinal_word(i+1)}: {s.name}"
+        
+        return text
         
     def draw(self) -> None:
         px, py = self.game.snake.pos()
@@ -388,7 +454,7 @@ class UserInterface:
             sx, sy = snake.pos()
 
             dx = sx - px
-            dy = py - sy
+            dy = sy - py
 
             x = MINIMAP_SIZE / 2 + dx * scale
             y = MINIMAP_SIZE / 2 + dy * scale
@@ -402,13 +468,15 @@ class UserInterface:
         if self.game.frame % PLACEMENT_UPDATE_INTERVAL == 0:
             snakes = sorted(self.game.ais + [self.game.snake], key=lambda s: len(s.positions), reverse=True)
             place = snakes.index(self.game.snake) + 1
-            ordinal_suffix = SUFFiXES[str(place)[-1]]
-            self.minimap.itemconfig(self.placement, text=str(place) + ordinal_suffix)
-            self.canvas.moveto(self.fps_counter, UI_PADDING+5, UI_PADDING)
+            self.minimap.itemconfig(self.placement, text=ordinal_word(place))
             
-        fps = round(1/self.game.dt)
-        self.canvas.itemconfig(self.fps_counter, text=f"FPS: {fps}")
-        self.canvas.moveto(self.fps_counter, UI_PADDING, UI_PADDING)
+        if self.dev_mode and self.game.frame % DEBUG_UPDATE_INTERVAL == 0:
+            self.debug_text_content = self.get_debug_text()
+            
+        if self.debug_text is not None:
+            self.canvas.itemconfig(self.debug_text, text=self.debug_text_content)
+            self.canvas.moveto(self.debug_text, UI_PADDING, UI_PADDING)
+            self.canvas.tag_raise(self.debug_text)
 
 class Background:
     def __init__(self, game: "Game") -> None:
@@ -496,12 +564,6 @@ class Game:
         self.root.geometry("1920x1080")
         self.root.attributes("-fullscreen", True)
 
-        self.root.bind("<Motion>", self.on_motion)
-        self.root.bind("<ButtonPress-1>", self.on_mouse_down)
-        self.root.bind("<ButtonRelease-1>", self.on_mouse_up)
-        self.root.bind("q", self.quit_game)
-        self.root.bind("Q", self.quit_game)
-
         self.canvas = tk.Canvas(self.root, width=self.window_width,
                                 height=self.window_height, bg="black")
         self.canvas.pack()
@@ -521,6 +583,14 @@ class Game:
         self.mouse_down = False
         self.dt = 0.016
         self.frame = 0
+        
+        self.root.bind("<Motion>", self.on_motion)
+        self.root.bind("<ButtonPress-1>", self.on_mouse_down)
+        self.root.bind("<ButtonRelease-1>", self.on_mouse_up)
+        self.root.bind("q", self.quit_game)
+        self.root.bind("Q", self.quit_game)
+        self.root.bind("n", self.ui.toggle_dev)
+        self.root.bind("N", self.ui.toggle_dev)
     
     def visible_radius(self) -> float:
         sf = shrink_factor(len(self.snake.positions))
