@@ -229,8 +229,8 @@ class PlayerSnake(Snake):
                 plr_r = snake_radius(len(self.positions))
                 
                 if dist < bot_r + plr_r:
-                    messagebox.showerror("Game Over", "You ran into another snake.")
-                    quit(0)
+                    self.game.ui.show_game_over()
+                    self.game.game_over = True
 
 class AiSnake(Snake):
     def __init__(self, game: "Game") -> None:
@@ -445,6 +445,25 @@ class UserInterface:
         self.text_content = ""
         self.dev_mode = DEBUG_IS_DEFAULT
         
+    def show_game_over(self) -> None:
+        for obj in self.canvas.find_all():
+            self.canvas.delete(obj)
+        
+        self.canvas.create_text(self.game.window_width/2,
+                                self.game.window_height/2,
+                                text="GAME OVER",
+                                fill="white",
+                                font=("Arial", 24))
+        
+        self.canvas.create_text(self.game.window_width/2,
+                                self.game.window_height/2+100,
+                                text="Press Enter to play again.\n"
+                                     "Press Q to exit.",
+                                fill="white",
+                                font=("Arial", 12))
+        
+        self.game.root.bind("<Return>", self.game.restart)
+        
     def toggle_dev(self, _=None) -> None:
         self.dev_mode = not self.dev_mode
                 
@@ -597,6 +616,7 @@ class Game:
         temp_root.destroy()
         
         self.paused = False
+        self.game_over = False
         self.pause_text = None
         
         self.frame_interval = math.floor(1000/TARGET_FPS)
@@ -636,6 +656,10 @@ class Game:
         self.root.bind("N", self.ui.toggle_dev)
         self.root.bind("<space>", self.pause)
         
+    def restart(self, _=None) -> None:
+        self.root.destroy()
+        Game().start()
+        
     def pause(self, _=None) -> None:
         self.paused = not self.paused
         
@@ -668,6 +692,9 @@ class Game:
         quit(0)
 
     def update(self):
+        if self.game_over:
+            return
+        
         if self.paused:
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
