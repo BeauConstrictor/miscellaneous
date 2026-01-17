@@ -31,7 +31,7 @@ SUFFIXES = {
 }
 BG_WIDTH = 599
 BG_HEIGHT = 519
-TARGET_FPS = 30
+TARGET_FPS = 60
 ORB_SPAWN_RADIUS = 1000
 SPAWN_RADIUS = 3000
 AI_CRAZINESS = 0.01
@@ -266,7 +266,6 @@ class AiSnake(Snake):
             dx_orb = closest_orb.x - px
             dy_orb = closest_orb.y - py
             angle_to_orb = math.atan2(dy_orb, dx_orb)
-            # Blend desired heading toward orb
             desired_heading += AI_ORB_ATTRACTION * ((angle_to_orb - desired_heading + math.pi) % (2*math.pi) - math.pi)
 
         # aviod player
@@ -390,6 +389,7 @@ class Orb:
 
             if dist < snake_radius(len(snake.positions)) + self.radius:
                 snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
+                if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
                 self.regen()
             elif dist < ORB_ATTRACTION_DIST:
                 attract_strength = ORB_ATTRACTION
@@ -422,6 +422,7 @@ class UserInterface:
     def __init__(self, game: "Game") -> None:
         self.canvas = game.canvas
         self.game = game
+        self.last_orb = time.perf_counter()
 
         self.minimap = tk.Canvas(
             self.game.root,
@@ -473,11 +474,21 @@ class UserInterface:
         fps = round(1/self.game.dt)
         pos = self.game.snake.pos()
         
+        segments = len(self.game.snake.positions)
+        for a in self.game.ais:
+            segments += len(a.positions)
+        
         text = f"FPS: {fps}\n" \
+               f"FPS Cap: {TARGET_FPS}\n"\
                f"Digesting: {self.game.snake.add_length}\n"\
                f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
-               f"Length: {len(self.game.snake.positions)}\n"\
+               f"Length: {len(self.game.snake.positions)} (in all snakes: {segments})\n"\
                f"Bots: {len(self.game.ais)}\n"\
+               f"Frame: {self.game.frame}\n"\
+               f"Delta Time: {self.game.dt}\n"\
+               f"Zoom Out: {shrink_factor(len(self.game.snake.positions))}x\n"\
+               f"On Screen: {len(self.canvas.find_all())} objects (no culling)\n"\
+               f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
                    
         leaderboard = sorted(self.game.ais + [self.game.snake],
                      key=lambda s: len(s.positions), reverse=True)
