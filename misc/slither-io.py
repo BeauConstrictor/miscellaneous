@@ -28,11 +28,11 @@ SUFFiXES = {
 }
 BG_WIDTH = 599
 BG_HEIGHT = 519
-TARGET_FPS = 60
+TARGET_FPS = 30
 ORB_SPAWN_RADIUS = 1000
 SPAWN_RADIUS = 10000
 AI_CRAZINESS = 0.01
-AI_COUNT = 20
+AI_COUNT = 19
 ORB_COUNT = 80
 SPEED = 250
 SPRINT_SPEED = 350
@@ -158,7 +158,10 @@ class Snake:
                 self.canvas.itemconfig(seg,
                     fill=self.primary, outline=self.primary)
                 self.canvas.tag_raise(seg)
-            else:    
+            elif i % 6 == 0:
+                self.canvas.itemconfig(seg,
+                    fill=self.primary, outline=self.primary)
+            else:
                 self.canvas.itemconfig(seg,
                     fill=self.accent, outline=self.primary)
         
@@ -363,9 +366,13 @@ class UserInterface:
                                                   text="+", fill="white",
                                                   font=("Arial", 16))
         
-        self.placement = self.minimap.create_text(UI_PADDING, UI_PADDING,
+        self.placement = self.minimap.create_text(UI_PADDING+5, UI_PADDING,
                                                   text="1st", fill="white",
                                                   font=("Arial", 12))
+        
+        self.fps_counter = self.canvas.create_text(UI_PADDING, UI_PADDING,
+                                                   text=f"FPS: {TARGET_FPS}", fill="white",
+                                                   font=("Arial", 12))
         
         self.heads = {}
         
@@ -391,9 +398,13 @@ class UserInterface:
                 
         if self.game.frame % PLACEMENT_UPDATE_INTERVAL == 0:
             snakes = sorted(self.game.ais + [self.game.snake], key=lambda s: len(s.positions), reverse=True)
-            place = snakes.index(self.game.snake)
+            place = snakes.index(self.game.snake) + 1
             ordinal_suffix = SUFFiXES[str(place)[-1]]
             self.minimap.itemconfig(self.placement, text=str(place) + ordinal_suffix)
+            
+        fps = round(1/self.game.dt)
+        self.canvas.itemconfig(self.fps_counter, text=f"FPS: {fps}")
+        self.canvas.moveto(self.fps_counter, UI_PADDING, UI_PADDING)
 
 class Background:
     def __init__(self, game: "Game") -> None:
@@ -496,7 +507,8 @@ class Game:
     
         set_z_height(self.canvas)
 
-        self.last_time = time.time()
+        self.last_time = time.perf_counter()
+        self.next_frame_time = self.last_time
         
         self.mouse_x, self.mouse_y = 0, 0
         self.mouse_down = False
@@ -523,24 +535,33 @@ class Game:
         self.root.quit()
         quit(0)
 
-    def update(self) -> None:
-        now = time.time()
-        self.dt = now - self.last_time
+    def update(self):
+        now = time.perf_counter()
+
+        # Simulation delta (clamped)
+        self.dt = min(0.05, now - self.last_time)
         self.last_time = now
 
+        # --- GAME LOGIC ---
         self.bg.draw()
 
         for orb in self.orbs: orb.step()
         for ai in self.ais: ai.step()
         self.snake.step()
-        
+
         for orb in self.orbs: orb.draw()
         for ai in self.ais: ai.draw()
         self.snake.draw()
         self.ui.draw()
-    
+        # -------------------
+
+        # Schedule next frame using FIXED timestep
+        self.next_frame_time += 1 / TARGET_FPS
+        delay = max(0, int((self.next_frame_time - time.perf_counter()) * 1000))
+
         self.frame += 1
-        self.root.after(self.frame_interval, self.update)
+        self.root.after(delay, self.update)
+
 
     def start(self) -> None:
         self.update()
