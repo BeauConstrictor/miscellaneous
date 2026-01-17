@@ -3,6 +3,7 @@
 # script.
 
 from tkinter import messagebox
+from collections import deque
 import tkinter as tk
 import random
 import math
@@ -52,7 +53,7 @@ CORPSE_USELESSNESS = 12
 CORPSE_SPREAD = 20
 MINIMAP_SIZE = 200
 MINIMAP_PADDING = 20
-MINIMAP_RADIUS = 5000
+MINIMAP_RADIUS = 10000
 PLACEMENT_UPDATE_INTERVAL = 100
 DEBUG_UPDATE_INTERVAL = 15
 MAX_EATEN_AT_ONCE = 30
@@ -116,7 +117,6 @@ class Snake:
         
         self.canvas = game.canvas
         start_x, start_y = random.randint(-SPAWN_RADIUS, SPAWN_RADIUS), random.randint(-SPAWN_RADIUS, SPAWN_RADIUS)
-        self.positions = [(start_x, start_y+i*5) for i in range(self.initial_len())]
         self.add_length = 0
         self.game = game
 
@@ -125,6 +125,10 @@ class Snake:
         self.primary = rgb_to_hex(self.color)
         self.accent = rgb_to_hex([min(255, max(c-50, 0)) for c in self.color])
         
+        self.positions = deque(
+            (start_x, start_y + i*5)
+            for i in range(self.initial_len())
+        )
         self.segments = [
             self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
             for _ in self.positions
@@ -156,7 +160,7 @@ class Snake:
             self.add_length -= 1
         else:
             for i in range(self.shorten_rate()):
-                self.positions.pop(0)
+                self.positions.popleft()
                 oval = self.segments.pop(0)
                 if new_oval:
                     self.canvas.delete(oval)
