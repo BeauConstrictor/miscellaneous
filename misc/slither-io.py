@@ -60,6 +60,12 @@ ORBS_PER_CORPSE_SEGMENT = 3
 PLAYER_SPOT_SIZE = 6
 LEADERBOARD_SIZE = 3
 DEBUG_IS_DEFAULT = True
+AI_PERLIN_SWAY = 0.2
+AI_TURN_SPEED = 0.1
+AI_ORB_ATTRACTION = 0.5
+AI_REPEL_WEIGHT = 1.0
+AI_REPEL_DISTANCE = 200
+AI_NOISE_SCALE = 0.01  
 
 with open("misc/.slitherio/names.json", "r") as f:
     names_json = json.load(f)
@@ -233,18 +239,53 @@ class AiSnake(Snake):
                               random.choice(surnames))
         self.player = game.snake
         self.id = random.randint(0, 999)
-        
+
+        self.current_heading = noise.perlin1d(self.id) * 2 * math.pi
+
         self.game.ui.heads[self] = (
             self.game.ui.minimap.create_oval(0,0,0,0, fill=self.accent, outline=self.primary),
             self
         )
 
     def move(self) -> tuple[float, float]:
-        move_x, move_y = normalise(noise.perlin2d(self.game.frame*AI_CRAZINESS,
-                                                  seed=self.id),
-                                   SPEED*self.game.dt)
-        x, y = self.pos()
-        return x + move_x, y + move_y
+        px, py = self.pos()
+
+        perlin_adjust = noise.perlin1d(self.game.frame * AI_NOISE_SCALE + self.id) * AI_PERLIN_SWAY
+        desired_heading = self.current_heading + perlin_adjust
+
+        # go to orb
+        if self.game.orbs:
+            closest_orb = min(
+                self.game.orbs,
+                key=lambda o: distance((px, py), (o.x, o.y))[0]
+            )
+            dx_orb = closest_orb.x - px
+            dy_orb = closest_orb.y - py
+            angle_to_orb = math.atan2(dy_orb, dx_orb)
+            # Blend desired heading toward orb
+            desired_heading += AI_ORB_ATTRACTION * ((angle_to_orb - desired_heading + math.pi) % (2*math.pi) - math.pi)
+
+        # aviod player
+        closest_seg = min(
+            self.player.positions,
+            key=lambda p: distance((px, py), p)[0]
+        )
+        dist_seg = distance((px, py), closest_seg)[0]
+        if dist_seg < AI_REPEL_DISTANCE:
+            dx_seg = closest_seg[0] - px
+            dy_seg = closest_seg[1] - py
+            angle_to_seg = math.atan2(dy_seg, dx_seg)
+            desired_heading += AI_REPEL_WEIGHT * ((angle_to_seg + math.pi - desired_heading + math.pi) % (2*math.pi) - math.pi)
+
+        heading_diff = ((desired_heading - self.current_heading + math.pi) % (2*math.pi)) - math.pi
+        heading_diff = max(-AI_TURN_SPEED, min(AI_TURN_SPEED, heading_diff))
+        self.current_heading += heading_diff
+
+        move_distance = SPEED * self.game.dt
+        new_x = px + math.cos(self.current_heading) * move_distance
+        new_y = py + math.sin(self.current_heading) * move_distance
+
+        return (new_x, new_y)
     
     def kill(self) -> None:
         for s in self.segments:
@@ -432,6 +473,7 @@ class UserInterface:
                f"Digesting: {self.game.snake.add_length}\n"\
                f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
                f"Length: {len(self.game.snake.positions)}\n"\
+               f"Bots: {len(self.game.ais)}\n"\
                    
         leaderboard = sorted(self.game.ais + [self.game.snake],
                      key=lambda s: len(s.positions), reverse=True)
