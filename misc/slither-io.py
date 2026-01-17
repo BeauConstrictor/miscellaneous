@@ -201,13 +201,13 @@ class Snake:
                 self.canvas.coords(seg,
                                 rel_x - radius, rel_y - radius,
                                 rel_x + radius, rel_y + radius)
+                self.canvas.tag_raise(seg)
                 
                 if i == len(self.positions)-1:
                     self.canvas.itemconfig(seg,
                         fill=self.primary, outline=self.primary)
                     self.canvas.coords(self.nametag, rel_x,
                                     rel_y-NAMETAG_HEIGHT-radius)
-                    self.canvas.tag_raise(seg)
                     self.canvas.tag_raise(self.nametag)
                 elif (i+1) % 6 == 0:
                     self.canvas.itemconfig(seg,
