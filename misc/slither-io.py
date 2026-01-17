@@ -5,12 +5,19 @@
 from tkinter import messagebox
 from collections import deque
 import tkinter as tk
+import pathlib
 import random
 import math
 import time
 import json
+import os
 
 import noise
+
+script_dir = pathlib.Path(__file__).resolve().parent
+parent_dir = script_dir.parent
+os.chdir(parent_dir)
+
 
 PALETTE = [
     (255, 0, 0),  
@@ -230,7 +237,7 @@ class PlayerSnake(Snake):
                 
                 if dist < bot_r + plr_r:
                     self.game.ui.show_game_over()
-                    self.game.game_over = True
+                    self.game.paused = True
 
 class AiSnake(Snake):
     def __init__(self, game: "Game") -> None:
@@ -616,7 +623,6 @@ class Game:
         temp_root.destroy()
         
         self.paused = False
-        self.game_over = False
         self.pause_text = None
         
         self.frame_interval = math.floor(1000/TARGET_FPS)
@@ -692,9 +698,6 @@ class Game:
         quit(0)
 
     def update(self):
-        if self.game_over:
-            return
-        
         if self.paused:
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
