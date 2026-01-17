@@ -37,6 +37,15 @@ def normalise(vector: tuple[float, float], length: float) -> tuple[float, float]
         return 0, 0
     return x/magnitude*length, y/magnitude*length
 
+def lerp_vectors(a: tuple[float, float], b: tuple[float, float], t: float) -> tuple[float, float]:
+    x = (1 - t) * a[0] + t * b[0]
+    y = (1 - t) * a[1] + t * b[1]
+    
+    length = math.sqrt(x**2 + y**2)
+    if length != 0:
+        return (x, y)
+    return (0, 0)
+
 def distance(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float, float]:
     dx = a[0] - b[0]
     dy = a[1] - b[1]
@@ -172,6 +181,8 @@ class PlayerSnake(Snake):
         self.debug_grow = False
         if ALLOW_DEBUG_CHEATS:
             self.game.root.bind("<KeyPress>", self.keypress)
+            
+        self.last_movement = (0, 0)
         
     def keypress(self, e: tk.Event) -> None:
         if e.char == "g":
@@ -181,9 +192,13 @@ class PlayerSnake(Snake):
         speed = SPRINT_SPEED if self.game.mouse_down else SPEED
         
         x, y = self.pos()
-        offset = normalise((self.game.mouse_x, self.game.mouse_y), speed*self.game.dt)
-        return (x + offset[0], y + offset[1])
-    
+        
+        offset = normalise((self.game.mouse_x, self.game.mouse_y), speed * self.game.dt)
+        movement = normalise(lerp_vectors(self.last_movement, offset, PLR_TURN_SPEED), SPEED * self.game.dt)
+        self.last_movement = movement
+        
+        return (x + movement[0], y + movement[1])
+
     def shorten_rate(self) -> int:
         if self.debug_grow:
             return 0
@@ -328,7 +343,7 @@ class Orb:
     def regen(self) -> None:
         if self.is_temp:
             self.canvas.delete(self.id)
-            self.game.orbs.remove(self)
+            if self in self.game.orbs: self.game.orbs.remove(self)
             return
         
         self.is_big = random.choice([False] * BIG_ORB_CHANCE + [True])
@@ -722,14 +737,14 @@ class Game:
             
         now = time.perf_counter()
 
-        self.dt = min(0.05, now - self.last_time)
-        self.last_time = now
-
-        self.step()
         self.draw()
 
         self.next_frame_time += 1 / TARGET_FPS
         frame_duration = 1 / TARGET_FPS
+        self.dt = min(0.05, now - self.last_time)
+        self.last_time = now
+
+        self.step()
 
         now = time.perf_counter()
 

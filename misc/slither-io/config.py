@@ -52,6 +52,7 @@ COLLISION_DETECT_GAP = 3        # Higher = better FPS, but less reliable
 # Gameplay
 ORB_ATTRACTION_DIST = 50        # How close you need to be to an orb to eat it 
 SPAWN_RADIUS = 3000             # How far away from origin to spawn bots and
+PLR_TURN_SPEED = 0.3           # How quickly the player can turn
                                 # player
 ORB_LENGTH_ADD = 0.2            # How much length each orb adds
 SPEED = 250                     # Standard movement speed
