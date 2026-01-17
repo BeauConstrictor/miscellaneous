@@ -81,8 +81,11 @@ with open("misc/.slitherio/names.json", "r") as f:
 def snake_radius(segment_count: int) -> float:
     return 10 + segment_count / 10
 
-def shrink_factor(segment_count: int) -> float:
+def zoomed_in_sf(segment_count: int) -> float:
     return segment_count / 400 + 1
+def zoomed_out_sf(segment_count: int) -> float:
+    return 10
+shrink_factor = zoomed_in_sf
 
 def minimap_spot_radius(segment_count: int) -> float:
     return 1 + 9 * (segment_count - 20) / 980
@@ -499,7 +502,7 @@ class UserInterface:
         text = ""
         
         if self.dev_mode:
-            text = f"Debug Menu (hide with N):\n\n" \
+            text = f"Debug Menu:\n\n" \
                    f"FPS: {fps}\n" \
                    f"FPS Cap: {TARGET_FPS}\n"\
                    f"Digesting: {self.game.snake.add_length}\n"\
@@ -513,6 +516,7 @@ class UserInterface:
                    f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
                    f"\n"
                    
+        text += "Leaderboard:\n\n"
         leaderboard = sorted(self.game.ais + [self.game.snake],
                      key=lambda s: len(s.positions), reverse=True)
         placement = leaderboard.index(self.game.snake)
@@ -523,6 +527,15 @@ class UserInterface:
 
         for i, s in enumerate(trimmed, start=start):
             text += f"{ordinal_word(i+1)}: {s.name}\n"
+        text += "\n"
+            
+        text += "Controls:\n\n"\
+                "Move: Mouse\n"\
+                "Boost: Left-click\n"\
+                "Pause: Space\n"\
+                "Zoom out: Right-click\n"\
+                "Debug Menu: N\n"\
+                "Quit: Q\n"\
         
         return text
         
@@ -648,6 +661,7 @@ class Game:
         
         self.root.title("slither.io")
         self.root.attributes("-fullscreen", True)
+        
 
         self.canvas = tk.Canvas(self.root, width=self.window_width,
                                 height=self.window_height, bg="black")
@@ -677,6 +691,16 @@ class Game:
         self.root.bind("n", self.ui.toggle_dev)
         self.root.bind("N", self.ui.toggle_dev)
         self.root.bind("<space>", self.pause)
+        
+        self.root.bind("<ButtonPress-3>", self.zoom_out)
+        self.root.bind("<ButtonRelease-3>", self.zoom_in)
+        
+    def zoom_out(self, _=None) -> None:
+        global shrink_factor
+        shrink_factor = zoomed_out_sf
+    def zoom_in(self, _=None) -> None:
+        global shrink_factor
+        shrink_factor = zoomed_in_sf
         
     def restart(self, _=None) -> None:
         self.root.destroy()
