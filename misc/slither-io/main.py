@@ -354,7 +354,10 @@ class Orb:
             dist, dx, dy = distance(snake.pos(), (shaken_x, shaken_y))
 
             if dist < snake_radius(len(snake.positions)) + self.radius:
-                snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
+                if self.is_big:
+                    snake.add_length += MAX_EATEN_AT_ONCE
+                else:
+                    snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
                 if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
                 self.regen()
             elif dist < ORB_ATTRACTION_DIST:
@@ -523,9 +526,9 @@ class UserInterface:
                 radius = round(minimap_spot_radius(len(snake.positions)))
                 self.minimap.coords(oval, x-radius, y-radius,
                                           x+radius, y+radius)
-                self.minimap.itemconfigure(oval, state="normal")
+                self.minimap.itemconfig(oval, state="normal")
             else:
-                self.minimap.itemconfigure(oval, state="hidden")
+                self.minimap.itemconfig(oval, state="hidden")
         for s in snakes_to_remove: del self.heads[s]
             
         self.minimap.tag_raise(self.crosshair)

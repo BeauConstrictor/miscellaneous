@@ -23,7 +23,7 @@ PALETTE = [
 ORB_SHAKE = 10                  # How vigorously the normal orbs shake
 ORB_SHAKE_RATE = 20             # How vigorously the normal orbs shake
 ORB_ATTRACTION = 0.3            # How quickly orbs come to you
-BIG_ORB_SHAKE_RATE = 70         # How vigorously the big orbs shake
+BIG_ORB_SHAKE_RATE = 100        # How vigorously the big orbs shake
 CORPSE_SPREAD = 20              # How spread out the orbs from a corpse are
 
 # UI
@@ -43,7 +43,7 @@ BG_WIDTH = 599
 BG_HEIGHT = 519
 
 # Performance
-TARGET_FPS = 50                 # FPS cap
+TARGET_FPS = 99                 # FPS cap
 AI_COUNT = 19                   # How many bots to include
 ORB_COUNT = 80                  # How many non-corpse orbs to place at once
 COLLISION_DETECT_GAP = 3        # Higher = better FPS, but less reliable
@@ -60,7 +60,7 @@ SPRINT_LENGTH_LOSS = 2          # How quickly you lose length when sprinting
 BIG_ORB_CHANCE = 150            # 1 in x chance to spawn a big orb
 STARTING_LENGTH = (20, 300)     # Starting length of player (left), and min-max
                                 # for bots
-CORPSE_USELESSNESS = 12         # The higher, the less you get from corpses
+CORPSE_USELESSNESS = 6         # The higher, the less you get from corpses
 MAX_EATEN_AT_ONCE = 30          # Max digesting orbs at a time
 ORBS_PER_CORPSE_SEGMENT = 3     # How many orbs to spawn per segment in a corpse
 
