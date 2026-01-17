@@ -32,9 +32,7 @@ SUFFIXES = {
 BG_WIDTH = 599
 BG_HEIGHT = 519
 TARGET_FPS = 60
-ORB_SPAWN_RADIUS = 1000
 SPAWN_RADIUS = 3000
-AI_CRAZINESS = 0.01
 AI_COUNT = 19
 ORB_COUNT = 80
 SPEED = 250
@@ -58,12 +56,10 @@ PLACEMENT_UPDATE_INTERVAL = 100
 DEBUG_UPDATE_INTERVAL = 15
 MAX_EATEN_AT_ONCE = 30
 ORBS_PER_CORPSE_SEGMENT = 3
-PLAYER_SPOT_SIZE = 6
 LEADERBOARD_SIZE = 3
 DEBUG_IS_DEFAULT = True
-AI_PERLIN_SWAY = 0.2
+AI_PERLIN_SWAY = 0.05
 AI_TURN_SPEED = 0.1
-AI_ORB_ATTRACTION = 0.5
 AI_REPEL_WEIGHT = 1.0
 AI_REPEL_DISTANCE = 200
 AI_NOISE_SCALE = 0.01  
@@ -257,18 +253,7 @@ class AiSnake(Snake):
         perlin_adjust = noise.perlin1d(self.game.frame * AI_NOISE_SCALE + self.id) * AI_PERLIN_SWAY
         desired_heading = self.current_heading + perlin_adjust
 
-        # go to orb
-        if self.game.orbs:
-            closest_orb = min(
-                self.game.orbs,
-                key=lambda o: distance((px, py), (o.x, o.y))[0]
-            )
-            dx_orb = closest_orb.x - px
-            dy_orb = closest_orb.y - py
-            angle_to_orb = math.atan2(dy_orb, dx_orb)
-            desired_heading += AI_ORB_ATTRACTION * ((angle_to_orb - desired_heading + math.pi) % (2*math.pi) - math.pi)
-
-        # aviod player
+        # avoid player
         closest_seg = min(
             self.player.positions,
             key=lambda p: distance((px, py), p)[0]
