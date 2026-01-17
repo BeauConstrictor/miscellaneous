@@ -31,7 +31,7 @@ SUFFIXES = {
 }
 BG_WIDTH = 599
 BG_HEIGHT = 519
-TARGET_FPS = 60
+TARGET_FPS = 30
 SPAWN_RADIUS = 3000
 AI_COUNT = 19
 ORB_COUNT = 80
@@ -63,7 +63,8 @@ AI_PERLIN_SWAY = 0.05
 AI_TURN_SPEED = 0.1
 AI_REPEL_WEIGHT = 1.0
 AI_REPEL_DISTANCE = 200
-AI_NOISE_SCALE = 0.01  
+AI_NOISE_SCALE = 0.01
+COLLISION_DETECT_GAP = 3
 
 with open("misc/.slitherio/names.json", "r") as f:
     names_json = json.load(f)
@@ -219,7 +220,9 @@ class PlayerSnake(Snake):
 
     def extra_step(self) -> None:
         for s in self.game.ais:
-            for p in s.positions:
+            for i, p in enumerate(s.positions):
+                if i % COLLISION_DETECT_GAP != 0 or i == len(s.positions)-1: continue
+                
                 dist, _,_ = distance(self.pos(), p)
                 
                 bot_r = snake_radius(len(s.positions))
@@ -289,7 +292,9 @@ class AiSnake(Snake):
         return world_pos[0] - px, world_pos[1] - py
     
     def extra_step(self) -> None:
-        for p in self.player.positions:
+        for i, p in enumerate(self.player.positions):
+            if i % COLLISION_DETECT_GAP != 0 or i == len(self.player.positions)-1: continue
+            
             dist, _,_ = distance(self.pos(), p)
             
             bot_r = snake_radius(len(self.positions))
@@ -469,7 +474,7 @@ class UserInterface:
                f"Bots: {len(self.game.ais)}\n"\
                f"Frame: {self.game.frame}\n"\
                f"Delta Time: {self.game.dt}\n"\
-               f"Zoom Out: {shrink_factor(len(self.game.snake.positions))}x\n"\
+               f"Zoom Out: {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
                f"On Screen: {len(self.canvas.find_all())} objects (no culling)\n"\
                f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
                    
