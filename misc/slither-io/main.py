@@ -422,7 +422,7 @@ class UserInterface:
         self.heads = {}
         
         self.text_content = ""
-        self.dev_mode = DEBUG_IS_DEFAULT
+        self.dev_mode = ALLOW_DEBUG_CHEATS
         
     def show_game_over(self) -> None:
         for obj in self.canvas.find_all():
