@@ -508,8 +508,7 @@ class UserInterface:
         snakes_to_remove = []
         for oval, snake in self.heads.values():
             if snake.dead:
-                # can't remove it from the dic
-                # t as we're still iterating
+                # can't remove it from the dict as we're still iterating
                 snakes_to_remove.append(snake)
                 self.minimap.delete(oval)
                 continue
@@ -603,7 +602,6 @@ class Background:
         half_h = grid_h / 2
 
         for tile, (wx, wy) in zip(self.tiles, self.tile_positions):
-
             wx_wrapped = cam_x + ((wx - cam_x + half_w) % grid_w) - half_w
             wy_wrapped = cam_y + ((wy - cam_y + half_h) % grid_h) - half_h
 
@@ -748,7 +746,8 @@ class Game:
         delay = max(1, int((self.next_frame_time - now) * 1000))
 
         self.frame += 1
-        self.root.after(delay, self.update)
+        
+        self.root.after(1 if TARGET_FPS == -1 else delay, self.update)
 
 
     def start(self) -> None:
