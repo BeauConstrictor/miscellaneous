@@ -38,7 +38,7 @@ SUFFIXES = {
 }
 BG_WIDTH = 599
 BG_HEIGHT = 519
-TARGET_FPS = 120
+TARGET_FPS = 50
 SPAWN_RADIUS = 3000
 AI_COUNT = 19
 ORB_COUNT = 80
@@ -189,10 +189,14 @@ class Snake:
 
             if rel_x + radius < 0 or rel_x - radius > self.game.window_width \
             or rel_y + radius < 0 or rel_y - radius > self.game.window_height:
-                self.canvas.itemconfigure(seg, state="hidden")
+                self.canvas.itemconfig(seg, state="hidden")
+                if i == len(self.positions)-1:
+                    self.canvas.itemconfig(self.nametag, state="hidden")
                 continue
             else:
-                self.canvas.itemconfigure(seg, state="normal")
+                self.canvas.itemconfig(seg, state="normal")
+                if i == len(self.positions)-1:
+                    self.canvas.itemconfig(self.nametag, state="normal")
 
                 self.canvas.coords(seg,
                                 rel_x - radius, rel_y - radius,
@@ -503,7 +507,7 @@ class UserInterface:
                    f"Frame: {self.game.frame}\n"\
                    f"Delta Time: {self.game.dt}\n"\
                    f"Zoom Out: {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
-                   f"On Screen: {len(self.canvas.find_all())} objects (no culling)\n"\
+                   f"On Screen: {len(self.canvas.find_all())} objects (included culled)\n"\
                    f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
                    f"\n"
                    
