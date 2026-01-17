@@ -107,6 +107,20 @@ class Snake:
     def extra_step(self) -> None:
         pass
     
+    def kill(self) -> None:
+        for i, seg_pos in enumerate(self.positions):
+            if i % CORPSE_USELESSNESS != 0: continue
+            ox = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
+            oy = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
+            for i in range(ORBS_PER_CORPSE_SEGMENT):
+                o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
+                self.game.orbs.append(o)
+                        
+        for s in self.segments:
+            self.canvas.delete(s)
+        self.canvas.delete(self.nametag)
+        self.dead = True
+    
     def step(self) -> None:
         new_oval = None
         
@@ -219,6 +233,7 @@ class PlayerSnake(Snake):
                 plr_r = snake_radius(len(self.positions))
                 
                 if dist < bot_r + plr_r:
+                    self.kill()
                     self.game.ui.show_game_over()
                     self.game.paused = True
 
@@ -268,13 +283,6 @@ class AiSnake(Snake):
 
         return (new_x, new_y)
     
-    def kill(self) -> None:
-        for s in self.segments:
-            self.canvas.delete(s)
-        self.canvas.delete(self.nametag)
-        self.game.ais.remove(self)
-        self.dead = True
-    
     def initial_len(self) -> int:
         return random.randint(STARTING_LENGTH[0], STARTING_LENGTH[1])    
     
@@ -295,14 +303,7 @@ class AiSnake(Snake):
             plr_r = snake_radius(len(self.player.positions))
             
             if dist < bot_r + plr_r:
-                for i, seg_pos in enumerate(self.positions):
-                    if i % CORPSE_USELESSNESS != 0: continue
-                    ox = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
-                    oy = random.randint(-CORPSE_SPREAD, CORPSE_SPREAD)
-                    for i in range(ORBS_PER_CORPSE_SEGMENT):
-                        o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
-                        self.game.orbs.append(o)
-                    
+                self.game.ais.remove(self)
                 self.kill()
                 return
 
@@ -444,8 +445,12 @@ class UserInterface:
         self.dev_mode = ALLOW_DEBUG_CHEATS
         
     def show_game_over(self) -> None:
-        for obj in self.canvas.find_all():
-            self.canvas.delete(obj)
+        # for obj in self.canvas.find_all():
+        #     self.canvas.delete(obj)
+        
+        self.game.bg.draw()
+        for o in self.game.orbs: o.draw()
+        self.game.ui.draw()
         
         self.canvas.create_text(self.game.window_width/2,
                                 self.game.window_height/2,
