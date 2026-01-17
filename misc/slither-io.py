@@ -630,7 +630,6 @@ class Game:
         self.root = tk.Tk()
         
         self.root.title("slither.io")
-        self.root.geometry("1920x1080")
         self.root.attributes("-fullscreen", True)
 
         self.canvas = tk.Canvas(self.root, width=self.window_width,
@@ -735,6 +734,9 @@ class Game:
 
     def start(self) -> None:
         self.update()
+        for i in range(STARTING_LENGTH[1]):
+            for a in self.ais:
+                a.step()
         self.root.mainloop()
 
 if __name__ == "__main__":
