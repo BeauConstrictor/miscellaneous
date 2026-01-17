@@ -13,82 +13,22 @@ import json
 import os
 
 import noise
+from config import *
 
 script_dir = pathlib.Path(__file__).resolve().parent
-parent_dir = script_dir.parent
-os.chdir(parent_dir)
+os.chdir(script_dir)
 
-
-PALETTE = [
-    (255, 0, 0),  
-    (255, 102, 0),
-    (255, 255, 0),
-    (0, 255, 0),  
-    (0, 255, 255),
-    (0, 102, 255),
-    (153, 0, 255),
-    (255, 0, 204),
-    (255, 0, 255),
-    (0, 204, 204) 
-]
 SUFFIXES = {
     "11": "th", "12": "th", "13": "th",
     "1": "st", "2": "nd", "3": "rd", "4": "th", "5": "th", "6": "th", "7": "th", "8": "th",
     "9": "th", "0": "th",
 }
-BG_WIDTH = 599
-BG_HEIGHT = 519
-TARGET_FPS = 50
-SPAWN_RADIUS = 3000
-AI_COUNT = 19
-ORB_COUNT = 80
-SPEED = 250
-SPRINT_SPEED = 350
-ORB_LENGTH_ADD = 0.2
-ORB_SHAKE = 10
-ORB_SHAKE_RATE = 20
-ORB_ATTRACTION = 0.3
-ORB_ATTRACTION_DIST = 50
-NAMETAG_HEIGHT = 30
-BIG_ORB_CHANCE = 150
-BIG_ORB_SHAKE_RATE = 70
-STARTING_LENGTH = (20, 300)
-UI_PADDING = 20
-PAUSE_BUTTON_PADDING = 100
-CORPSE_USELESSNESS = 12
-CORPSE_SPREAD = 20
-MINIMAP_SIZE = 200
-MINIMAP_PADDING = 20
-MINIMAP_RADIUS = 10000
-PLACEMENT_UPDATE_INTERVAL = 100
-DEBUG_UPDATE_INTERVAL = 15
-MAX_EATEN_AT_ONCE = 30
-ORBS_PER_CORPSE_SEGMENT = 3
-LEADERBOARD_SIZE = 3
-DEBUG_IS_DEFAULT = False
-AI_PERLIN_SWAY = 0.05
-AI_TURN_SPEED = 0.1
-AI_REPEL_WEIGHT = 1.0
-AI_REPEL_DISTANCE = 200
-AI_NOISE_SCALE = 0.01
-COLLISION_DETECT_GAP = 3
-
-with open("misc/.slitherio/names.json", "r") as f:
+with open("names.json", "r") as f:
     names_json = json.load(f)
     first_names = names_json["first_names"]
     surnames = names_json["surnames"]
 
-def snake_radius(segment_count: int) -> float:
-    return 10 + segment_count / 10
-
-def zoomed_in_sf(segment_count: int) -> float:
-    return segment_count / 400 + 1
-def zoomed_out_sf(segment_count: int) -> float:
-    return 10
 shrink_factor = zoomed_in_sf
-
-def minimap_spot_radius(segment_count: int) -> float:
-    return 1 + 9 * (segment_count - 20) / 980
 
 def normalise(vector: tuple[float, float], length: float) -> tuple[float, float]:
     x, y = vector
@@ -583,7 +523,7 @@ class Background:
         self.original_tile_width = BG_WIDTH
         self.original_tile_height = BG_HEIGHT
 
-        self.tile_image = tk.PhotoImage(file='misc/.slitherio/bg.png')
+        self.tile_image = tk.PhotoImage(file='bg.png')
 
         self.tiles = []
         self.tile_positions = []
@@ -698,9 +638,12 @@ class Game:
     def zoom_out(self, _=None) -> None:
         global shrink_factor
         shrink_factor = zoomed_out_sf
+        self.paused = True
+        self.draw()
     def zoom_in(self, _=None) -> None:
         global shrink_factor
         shrink_factor = zoomed_in_sf
+        self.paused = False
         
     def restart(self, _=None) -> None:
         self.root.destroy()
@@ -736,6 +679,17 @@ class Game:
     def quit_game(self, event: tk.Event) -> None:
         self.root.quit()
         quit(0)
+        
+    def step(self) -> None:
+        for orb in self.orbs: orb.step()
+        for ai in self.ais: ai.step()
+        self.snake.step()
+    def draw(self) -> None:
+        self.bg.draw()
+        for orb in self.orbs: orb.draw()
+        for ai in self.ais: ai.draw()
+        self.snake.draw()
+        self.ui.draw()
 
     def update(self):
         if self.paused:
@@ -748,16 +702,8 @@ class Game:
         self.dt = min(0.05, now - self.last_time)
         self.last_time = now
 
-        self.bg.draw()
-
-        for orb in self.orbs: orb.step()
-        for ai in self.ais: ai.step()
-        self.snake.step()
-
-        for orb in self.orbs: orb.draw()
-        for ai in self.ais: ai.draw()
-        self.snake.draw()
-        self.ui.draw()
+        self.step()
+        self.draw()
 
         self.next_frame_time += 1 / TARGET_FPS
         frame_duration = 1 / TARGET_FPS
