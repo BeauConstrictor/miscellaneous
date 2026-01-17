@@ -43,7 +43,7 @@ BG_WIDTH = 599
 BG_HEIGHT = 519
 
 # Performance
-TARGET_FPS = 30                 # FPS cap
+TARGET_FPS = 40                 # FPS cap
 AI_COUNT = 19                   # How many bots to include
 ORB_COUNT = 80                  # How many non-corpse orbs to place at once
 COLLISION_DETECT_GAP = 3        # Higher = better FPS, but less reliable

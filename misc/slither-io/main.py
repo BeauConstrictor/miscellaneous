@@ -120,6 +120,7 @@ class Snake:
                                                   fill=self.accent,
                                                   outline=self.primary,
                                                   tags=("snake",))
+            
         self.segments.append(seg)
         
         self.extra_step()
@@ -558,19 +559,11 @@ class Background:
         self.tiles = []
         self.tile_positions = []
 
-        self.create_tiles()
-
-    def create_tiles(self) -> None:
         self.tile_width = self.original_tile_width
         self.tile_height = self.original_tile_height
 
         self.tiles_x = (self.game.window_width // self.tile_width) + 4
         self.tiles_y = (self.game.window_height // self.tile_height) + 4
-
-        for tile in self.tiles:
-            self.canvas.delete(tile)
-        self.tiles.clear()
-        self.tile_positions.clear()
 
         start_x = -self.tiles_x // 2
         start_y = -self.tiles_y // 2
