@@ -275,21 +275,12 @@ class AiSnake(Snake):
             key=lambda p: distance((px, py), p)[0]
         )
         dist_seg = distance((px, py), closest_seg)[0]
+        dist_seg -= snake_radius(len(self.player.positions))
         if dist_seg < AI_REPEL_DISTANCE:
             dx_seg = closest_seg[0] - px
             dy_seg = closest_seg[1] - py
             angle_to_seg = math.atan2(dy_seg, dx_seg)
             desired_heading += AI_REPEL_WEIGHT * ((angle_to_seg + math.pi - desired_heading + math.pi) % (2 * math.pi) - math.pi)
-
-        for ai in self.game.ais:
-            if ai != self:
-                ai_px, ai_py = ai.pos()
-                dist_ai = distance((px, py), (ai_px, ai_py))[0]
-                if dist_ai < AI_REPEL_DISTANCE:
-                    dx_ai = ai_px - px
-                    dy_ai = ai_py - py
-                    angle_to_ai = math.atan2(dy_ai, dx_ai)
-                    desired_heading += AI_REPEL_WEIGHT * ((angle_to_ai + math.pi - desired_heading + math.pi) % (2 * math.pi) - math.pi)
 
         heading_diff = ((desired_heading - self.current_heading + math.pi) % (2 * math.pi)) - math.pi
         heading_diff = max(-AI_TURN_SPEED, min(AI_TURN_SPEED, heading_diff))
