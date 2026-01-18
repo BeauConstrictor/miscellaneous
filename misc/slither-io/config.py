@@ -20,11 +20,6 @@ PALETTE = [
     (255, 0, 255),
     (0, 204, 204) 
 ]
-ORB_SHAKE = 10                  # How vigorously the normal orbs shake
-ORB_SHAKE_RATE = 20             # How vigorously the normal orbs shake
-ORB_ATTRACTION = 0.3            # How quickly orbs come to you
-BIG_ORB_SHAKE_RATE = 100        # How vigorously the big orbs shake
-CORPSE_SPREAD = 20              # How spread out the orbs from a corpse are
 
 # UI
 UI_PADDING = 20                 # How far from the edge of the screen to place 
@@ -52,7 +47,12 @@ LOW_QUAL_CULLING_LEEWAY = 50    # How far off-screen to draw to prevent things
                                 # disappearing at the edges
 
 # Gameplay
-ORB_ATTRACTION_DIST = 50        # How close you need to be to an orb to eat it 
+ORB_SHAKE = 10                  # How vigorously the normal orbs shake
+ORB_SHAKE_RATE = 20             # How vigorously the normal orbs shake
+ORB_ATTRACTION = 0.6            # How quickly orbs come to you
+BIG_ORB_SHAKE_RATE = 100        # How vigorously the big orbs shake
+CORPSE_SPREAD = 20              # How spread out the orbs from a corpse are
+ORB_ATTRACTION_DIST = 100       # How close you need to be to an orb to eat it 
 SPAWN_RADIUS = 3000             # How far away from origin to spawn bots and
 PLR_TURN_SPEED = 0.3            # How quickly the player can turn
                                 # player

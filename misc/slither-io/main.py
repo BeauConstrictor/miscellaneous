@@ -429,9 +429,6 @@ class Orb:
         self.rand_pos()
 
     def step(self) -> None:
-        shake_rate = ORB_SHAKE_RATE
-        if self.is_big: shake_rate = BIG_ORB_SHAKE_RATE
-        
         shake_x, shake_y = noise.perlin2d(self.game.frame / ORB_SHAKE_RATE, self.id)
         shaken_x = self.x + shake_x * ORB_SHAKE
         shaken_y = self.y + shake_y * ORB_SHAKE
@@ -452,9 +449,9 @@ class Orb:
                 if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
                 self.regen()
             elif dist < ORB_ATTRACTION_DIST:
-                attract_strength = ORB_ATTRACTION
-                self.x += dx * attract_strength
-                self.y += dy * attract_strength
+                strength = ORB_ATTRACTION * (1 - dist / ORB_ATTRACTION_DIST) ** 2
+                self.x += dx * strength
+                self.y += dy * strength
 
         if distance(self.player.pos(), (shaken_x, shaken_y))[0] > self.game.visible_radius() and not self.is_temp:
             self.regen()
@@ -667,6 +664,9 @@ class Background:
 
         self.tiles_x = (self.game.window_width // self.tile_width) + 4
         self.tiles_y = (self.game.window_height // self.tile_height) + 4
+        
+        self.last_cam_x = None
+        self.last_cam_y = None
 
         start_x = -self.tiles_x // 2
         start_y = -self.tiles_y // 2
@@ -688,14 +688,18 @@ class Background:
     
     def draw(self) -> None:
         if hasattr(self.game, "snake"):
+            sx, sy = self.game.snake.pos()
+            if self.last_cam_x == None:
+                self.last_cam_x, self.last_cam_y = sx, sy
+                
             sf = shrink_factor(len(self.game.snake.positions))
-            cam_x, cam_y = self.game.snake.pos()
+            offset_x = sx - self.last_cam_x
+            offset_y = sy - self.last_cam_y
+            cam_x = self.last_cam_x + offset_x/sf
+            cam_y = self.last_cam_y + offset_y/sf
         else:
             sf = 1
             cam_x, cam_y = 0, 0
-            
-        cam_x /= sf
-        cam_y /= sf
 
         grid_w = self.tile_width * self.tiles_x
         grid_h = self.tile_height * self.tiles_y
@@ -807,14 +811,10 @@ class Game:
         quit(0)
         
     def step(self) -> None:
-        for orb in self.orbs: orb.step()
-        for ai in self.ais: ai.step()
-        self.snake.step()
+        for obj in self.ais + [self.snake] + self.orbs: obj.step()
     def draw(self) -> None:
         self.bg.draw()
-        for orb in self.orbs: orb.draw()
-        for ai in self.ais: ai.draw()
-        self.snake.draw()
+        for obj in self.ais + [self.snake] + self.orbs: obj.draw()
         self.ui.draw()
 
     def update(self):
