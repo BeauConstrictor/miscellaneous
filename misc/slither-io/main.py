@@ -268,7 +268,6 @@ class AiSnake(Snake):
         perlin_adjust = noise.perlin1d(self.game.frame * AI_NOISE_SCALE + self.id) * AI_PERLIN_SWAY
         desired_heading = self.current_heading + perlin_adjust
 
-        # avoid player
         closest_seg = min(
             self.player.positions,
             key=lambda p: distance((px, py), p)[0]
@@ -278,9 +277,19 @@ class AiSnake(Snake):
             dx_seg = closest_seg[0] - px
             dy_seg = closest_seg[1] - py
             angle_to_seg = math.atan2(dy_seg, dx_seg)
-            desired_heading += AI_REPEL_WEIGHT * ((angle_to_seg + math.pi - desired_heading + math.pi) % (2*math.pi) - math.pi)
+            desired_heading += AI_REPEL_WEIGHT * ((angle_to_seg + math.pi - desired_heading + math.pi) % (2 * math.pi) - math.pi)
 
-        heading_diff = ((desired_heading - self.current_heading + math.pi) % (2*math.pi)) - math.pi
+        for ai in self.game.ais:
+            if ai != self:
+                ai_px, ai_py = ai.pos()
+                dist_ai = distance((px, py), (ai_px, ai_py))[0]
+                if dist_ai < AI_REPEL_DISTANCE:
+                    dx_ai = ai_px - px
+                    dy_ai = ai_py - py
+                    angle_to_ai = math.atan2(dy_ai, dx_ai)
+                    desired_heading += AI_REPEL_WEIGHT * ((angle_to_ai + math.pi - desired_heading + math.pi) % (2 * math.pi) - math.pi)
+
+        heading_diff = ((desired_heading - self.current_heading + math.pi) % (2 * math.pi)) - math.pi
         heading_diff = max(-AI_TURN_SPEED, min(AI_TURN_SPEED, heading_diff))
         self.current_heading += heading_diff
 
@@ -289,6 +298,7 @@ class AiSnake(Snake):
         new_y = py + math.sin(self.current_heading) * move_distance
 
         return (new_x, new_y)
+
     
     def initial_len(self) -> int:
         return random.randint(STARTING_LENGTH[0], STARTING_LENGTH[1])    

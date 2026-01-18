@@ -52,7 +52,7 @@ COLLISION_DETECT_GAP = 3        # Higher = better FPS, but less reliable
 # Gameplay
 ORB_ATTRACTION_DIST = 50        # How close you need to be to an orb to eat it 
 SPAWN_RADIUS = 3000             # How far away from origin to spawn bots and
-PLR_TURN_SPEED = 0.3           # How quickly the player can turn
+PLR_TURN_SPEED = 0.3            # How quickly the player can turn
                                 # player
 ORB_LENGTH_ADD = 0.2            # How much length each orb adds
 SPEED = 250                     # Standard movement speed
@@ -61,7 +61,7 @@ SPRINT_LENGTH_LOSS = 2          # How quickly you lose length when sprinting
 BIG_ORB_CHANCE = 150            # 1 in x chance to spawn a big orb
 STARTING_LENGTH = (20, 300)     # Starting length of player (left), and min-max
                                 # for bots
-CORPSE_USELESSNESS = 6         # The higher, the less you get from corpses
+CORPSE_USELESSNESS = 6          # The higher, the less you get from corpses
 MAX_EATEN_AT_ONCE = 30          # Max digesting orbs at a time
 ORBS_PER_CORPSE_SEGMENT = 3     # How many orbs to spawn per segment in a corpse
 
