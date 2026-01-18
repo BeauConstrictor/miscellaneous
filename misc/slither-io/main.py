@@ -790,6 +790,7 @@ class Game:
         for i in range(STARTING_LENGTH[1]):
             for a in self.ais:
                 a.step()
+            time.sleep(0.002)
             
         self.bg.draw()
         
