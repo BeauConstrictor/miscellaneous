@@ -49,7 +49,7 @@ LOW_QUAL_CULLING_LEEWAY = 50    # How far off-screen to draw to prevent things
 # Gameplay
 ORB_SHAKE = 10                  # How vigorously the normal orbs shake
 ORB_SHAKE_RATE = 20             # How vigorously the normal orbs shake
-ORB_ATTRACTION = 2.0            # How quickly orbs come to you
+ORB_ATTRACTION = 600            # How quickly orbs come to you
 BIG_ORB_SHAKE_RATE = 100        # How vigorously the big orbs shake
 CORPSE_SPREAD = 20              # How spread out the orbs from a corpse are
 ORB_ATTRACTION_DIST = 100       # How close you need to be to an orb to eat it 

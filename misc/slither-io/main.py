@@ -441,17 +441,17 @@ class Orb:
             radius = snake_radius(len(snake.positions))
             dist, dx, dy = distance(snake.pos(), (shaken_x, shaken_y))
 
-            if dist < snake_radius(len(snake.positions)) + self.radius:
+            if dist < radius + self.radius:
                 if self.is_big:
                     snake.add_length += MAX_EATEN_AT_ONCE
                 else:
                     snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
                 if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
                 self.regen()
-            elif dist < ORB_ATTRACTION_DIST + radius:
-                strength = ORB_ATTRACTION * (1 - dist / ORB_ATTRACTION_DIST) ** 2
-                self.x += dx * strength
-                self.y += dy * strength
+            elif dist < ORB_ATTRACTION_DIST + radius + self.radius:
+                attraction = normalise((dx, dy), ORB_ATTRACTION*self.game.dt)
+                self.x += attraction[0]
+                self.y += attraction[1]
 
         if distance(self.player.pos(), (shaken_x, shaken_y))[0] > self.game.visible_radius() and not self.is_temp:
             self.regen()
