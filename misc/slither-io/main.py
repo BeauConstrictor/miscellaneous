@@ -4,6 +4,7 @@
 
 from tkinter import messagebox
 from collections import deque
+from pathlib import Path
 import tkinter as tk
 import pathlib
 import random
@@ -61,6 +62,9 @@ def ordinal_word(cardinal: int) -> str:
 def rgb_to_hex(c):
     return f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
 
+def create_full_name() -> str:
+    return random.choice(first_names) + " " + random.choice(surnames)
+
 def set_z_height(canvas: tk.Canvas) -> None:
     canvas.tag_lower("background")
     canvas.tag_raise("orbs")
@@ -94,6 +98,10 @@ class Snake:
         self.nametag = self.canvas.create_text(-1000, -1000, text=self.name,
                                                fill="white",
                                                font=("Arial", 12))
+        
+    def set_name(self, name: str) -> None:
+        self.name = name
+        self.canvas.itemconfig(self.nametag, text=self.name)
 
     def pos(self) -> None:
         return self.positions[-1]
@@ -240,8 +248,7 @@ class PlayerSnake(Snake):
 class AiSnake(Snake):
     def __init__(self, game: "Game") -> None:
         super().__init__(game,
-                         name=random.choice(first_names) + " " +
-                              random.choice(surnames))
+                         name=create_full_name())
         
         self.dead = False
         
@@ -762,12 +769,34 @@ class Game:
         
         self.root.after(1 if TARGET_FPS == -1 else delay, self.update)
 
-
     def start(self) -> None:
-        self.update()
         for i in range(STARTING_LENGTH[1]):
             for a in self.ais:
                 a.step()
+            
+        self.bg.draw()
+        
+        title = self.canvas.create_text(self.window_width/2,
+                                        self.window_height/2-100,
+                                        text="slither.io", font=("Arial", 48),
+                                        fill="white")
+        
+        entry = tk.Entry(self.root)
+        entry.insert(tk.END, Path.home().name)
+        entry.place(x=self.window_width/2, y=self.window_height/2,
+                    anchor="center")
+        
+        def start_game(_=None) -> None:
+            self.snake.set_name(entry.get())
+            self.canvas.delete(title)
+            entry.destroy()
+            button.destroy()
+            self.update()
+            
+        button = tk.Button(self.root, text="Play!", command=start_game)
+        button.place(x=self.window_width/2, y=self.window_height/2+50,
+                    anchor="center")
+        
         self.root.mainloop()
 
 if __name__ == "__main__":
