@@ -245,7 +245,7 @@ class PlayerSnake(Snake):
                 if dist < bot_r + plr_r:
                     self.kill()
                     self.game.ui.show_game_over()
-                    self.game.paused = True
+                    self.game.game_over = True
 
 class AiSnake(Snake):
     def __init__(self, game: "Game") -> None:
@@ -665,6 +665,7 @@ class Game:
         
         self.paused = False
         self.zoomed_out = False
+        self.game_over = False
         self.pause_text = None
         self.debug_mode = False
         
@@ -759,7 +760,7 @@ class Game:
         self.ui.draw()
 
     def update(self):
-        if self.paused or self.zoomed_out:
+        if self.paused or self.zoomed_out or self.game_over:
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
             return
