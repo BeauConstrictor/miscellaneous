@@ -438,6 +438,8 @@ class UserInterface:
             highlightthickness=2,
             highlightbackground="white"
         )
+        self.hide_minimap()
+        self.heads = {}
         
         self.crosshair = self.minimap.create_text(MINIMAP_SIZE/2, MINIMAP_SIZE/2,
                                                   text="+", fill="white",
@@ -451,13 +453,15 @@ class UserInterface:
                                             text=f"",
                                             fill="white",
                                             font=("Courier", 12, "bold"))
-        
-        self.heads = {}
-        
         self.text_content = ""
-        self.dev_mode = self.game.debug_mode
         
-        self.hide_minimap()
+        self.dev_mode = self.game.debug_mode
+        self.show_cntrls = False
+        
+        self.game.root.bind("n", self.toggle_dev)
+        self.game.root.bind("N", self.toggle_dev)
+        self.game.root.bind("c", self.toggle_cntrls)
+        self.game.root.bind("C", self.toggle_cntrls)
         
     def show_minimap(self) -> None:
         self.minimap.place(
@@ -471,9 +475,6 @@ class UserInterface:
         self.minimap.place_forget()
         
     def show_game_over(self) -> None:
-        # for obj in self.canvas.find_all():
-        #     self.canvas.delete(obj)
-        
         self.game.bg.draw()
         for o in self.game.orbs: o.draw()
         self.game.ui.draw()
@@ -495,6 +496,8 @@ class UserInterface:
         
     def toggle_dev(self, _=None) -> None:
         self.dev_mode = not self.dev_mode
+    def toggle_cntrls(self, _=None) -> None:
+        self.show_cntrls = not self.show_cntrls
                 
     def generate_text(self) -> str:
         fps = round(1/self.game.dt)
@@ -507,23 +510,23 @@ class UserInterface:
         text = ""
         
         text += f"Stats:\n\n"\
-                f"Length:     {len(self.game.snake.positions)}\n"\
-                f"Kills:      {self.game.snake.kills}\n"\
-                f"Players:    {len(self.game.ais) + 1}\n"\
+                f"Length:        {len(self.game.snake.positions)}\n"\
+                f"Kills:         {self.game.snake.kills}\n"\
+                f"Players:       {len(self.game.ais) + 1}\n"\
                 f"\n"
         
         if self.dev_mode:
             text += f"Debug Menu:\n\n" \
-                    f"FPS:        {fps}\n" \
-                    f"FPS Cap:    {TARGET_FPS}\n"\
-                    f"Digesting:  {self.game.snake.add_length}\n"\
-                    f"Coords:     {pos[0]:.1f}, {pos[1]:.1f}\n"\
-                    f"Frame:      {self.game.frame}\n"\
-                    f"Delta Time: {self.game.dt}\n"\
-                    f"Zoom Out:   {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
-                    f"Bots:       {len(self.game.ais)}\n"\
-                    f"On Screen:  {len(self.canvas.find_all())} objects (included culled)\n"\
-                    f"Last Orb:   {time.perf_counter() - self.last_orb:.1f}s\n"\
+                    f"FPS:           {fps}\n" \
+                    f"FPS Cap:       {TARGET_FPS}\n"\
+                    f"Digesting:     {self.game.snake.add_length}\n"\
+                    f"Coords:        {pos[0]:.1f}, {pos[1]:.1f}\n"\
+                    f"Frame:         {self.game.frame}\n"\
+                    f"Delta Time:    {self.game.dt}\n"\
+                    f"Zoom Out:      {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
+                    f"Bots:          {len(self.game.ais)}\n"\
+                    f"On Screen:     {len(self.canvas.find_all())} objects (included culled)\n"\
+                    f"Last Orb:      {time.perf_counter() - self.last_orb:.1f}s\n"\
                     f"\n"
                    
         text += "Leaderboard:\n\n"
@@ -536,20 +539,23 @@ class UserInterface:
         trimmed = leaderboard[start:end]
 
         for i, s in enumerate(trimmed, start=start):
-            text += f"{(ordinal_word(i+1) + ":").ljust(11, " ")} {s.name}\n"
+            text += f"{(ordinal_word(i+1) + ":").ljust(14, " ")} {s.name}\n"
         text += "\n"
-            
-        text += "Controls:\n\n"\
-                "Move:       Mouse\n"\
-                "Boost:      Left-click\n"\
-                "Pause:      Space\n"\
-                "Zoom out:   Right-click\n"\
-                "Debug Menu: N\n"\
-                "Quit:       Q\n"\
-                "\n"
-                    
-        if self.game.debug_mode:
-            text += "Grow: G\n"\
+        
+        text += "Controls:\n\n"
+        if not self.show_cntrls:
+            text += "Show Controls: C\n"
+        else:
+            text += "Hide Controls: C\n"\
+                   "Move:          Mouse\n"\
+                    "Boost:         Left-click\n"\
+                    "Pause:         Space\n"\
+                    "Zoom out:      Right-click\n"\
+                    "Quit:          Q\n"\
+                    "Debug Menu:    N\n"
+            if self.game.debug_mode:
+                text += "Grow: G\n"
+        text += "\n"
         
         return text
         
@@ -704,8 +710,6 @@ class Game:
         self.root.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.root.bind("q", self.quit_game)
         self.root.bind("Q", self.quit_game)
-        self.root.bind("n", self.ui.toggle_dev)
-        self.root.bind("N", self.ui.toggle_dev)
         
     def zoom_out(self, _=None) -> None:
         global shrink_factor
