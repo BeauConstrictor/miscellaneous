@@ -95,8 +95,8 @@ class Snake:
         if self.game.low_quality:
             self.line = self.canvas.create_line(0, 0, 0, 0,
                                                 fill=self.accent)
-            self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary)
-            self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent)
+            self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary, outline=self.primary)
+            self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent, outline=self.accent)
         else:
             self.segments = [
                 self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
