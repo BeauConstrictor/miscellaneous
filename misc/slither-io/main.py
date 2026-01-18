@@ -95,8 +95,10 @@ class Snake:
         if self.game.low_quality:
             self.line = self.canvas.create_line(0, 0, 0, 0,
                                                 fill=self.accent)
-            self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary, outline=self.primary)
-            self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent, outline=self.accent)
+            self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary,
+                                                outline=self.primary)
+            self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent,
+                                                outline=self.accent)
         else:
             self.segments = [
                 self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
@@ -194,17 +196,14 @@ class Snake:
                     self.canvas.itemconfig(self.tail, state="hidden")
                 continue
             
-            if i == len(self.positions)-1:
-                self.canvas.coords(self.nametag, rel_x, rel_y-NAMETAG_HEIGHT)
-                self.canvas.itemconfig(self.nametag, state="normal")
-
             coords.append(rel_x)
             coords.append(rel_y)
             
             if i == len(self.positions)-1:
                 self.canvas.coords(self.head, rel_x-radius, rel_y-radius,
                                               rel_x+radius, rel_y+radius)
-                self.canvas.coords(self.nametag, rel_x, rel_y-NAMETAG_HEIGHT)
+                self.canvas.coords(self.nametag, rel_x, rel_y-NAMETAG_HEIGHT-radius)
+                self.canvas.itemconfig(self.nametag, state="normal")
             if i == 0:
                 self.canvas.coords(self.tail, rel_x-radius, rel_y-radius,
                                               rel_x+radius, rel_y+radius)
