@@ -47,6 +47,9 @@ AI_COUNT = 19                   # How many bots to include
 ORB_COUNT = 80                  # How many non-corpse orbs to place at once
 COLLISION_DETECT_GAP = 3        # Higher = better FPS, but less reliable
                                 # collisions
+LOW_QUALITY_FIDELITY = 4        # Higher = better FPS, blockier snakes
+LOW_QUAL_CULLING_LEEWAY = 50    # How far off-screen to draw to prevent things
+                                # disappearing at the edges
 
 # Gameplay
 ORB_ATTRACTION_DIST = 50        # How close you need to be to an orb to eat it 

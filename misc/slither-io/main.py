@@ -178,13 +178,19 @@ class Snake:
         coords = []
 
         for i, (x, y) in enumerate(self.positions):
+            if i != len(self.positions) -1 and i != 0 and \
+            i % LOW_QUALITY_FIDELITY != 0: continue
+            
             rel_x = (x - px)/sf + self.game.window_width/2
             rel_y = (y - py)/sf + self.game.window_height/2
 
-            if rel_x + radius < 0 or rel_x - radius > self.game.window_width \
-            or rel_y + radius < 0 or rel_y - radius > self.game.window_height:
+            if rel_x + radius < -LOW_QUAL_CULLING_LEEWAY or rel_x - radius > self.game.window_width + LOW_QUAL_CULLING_LEEWAY \
+            or rel_y + radius < -LOW_QUAL_CULLING_LEEWAY or rel_y - radius > self.game.window_height + LOW_QUAL_CULLING_LEEWAY:
                 if i == len(self.positions)-1:
                     self.canvas.itemconfig(self.nametag, state="hidden")
+                    self.canvas.itemconfig(self.head, state="hidden")
+                elif i == 0:
+                    self.canvas.itemconfig(self.tail, state="hidden")
                 continue
 
             coords.append(rel_x)
@@ -199,17 +205,13 @@ class Snake:
 
         if len(coords) >= 4:
             self.canvas.coords(self.line, *coords)
-            self.canvas.itemconfig(self.line,
-                                   width=radius*2)
-            self.canvas.itemconfig(self.head,
-                                   state="normal")
+            self.canvas.itemconfig(self.line, width=radius*2, state="normal")
+            self.canvas.itemconfig(self.tail, state="normal")
+            self.canvas.itemconfig(self.head, state="normal")
             self.canvas.tag_raise(self.line)
             self.canvas.tag_raise(self.head)
         else:
-            self.canvas.itemconfig(self.line,
-                                   width=0)
-            self.canvas.itemconfig(self.head,
-                                   state="hidden")
+            self.canvas.itemconfig(self.line, state="hidden")
     
     def draw_high_quality(self) -> None:
         sf = shrink_factor(len(self.game.snake.positions))
@@ -851,6 +853,7 @@ class Game:
         self.entry.destroy()
         self.play_btn.destroy()
         self.debug_mode_warning.destroy()
+        self.low_quality_btn.destroy()
         self.ui.show_minimap()
         
         self.root.bind("<space>", self.pause)
