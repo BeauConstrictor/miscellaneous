@@ -34,7 +34,6 @@ NAMETAG_HEIGHT = 30             # How high above head to place nametags
 MINIMAP_SIZE = 200              # How big to make the (square) minimap
 MINIMAP_PADDING = 20            # Distance of minimap from edge of screen
 MINIMAP_RADIUS = 10000          # Radius from player head visible in minimap
-PLACEMENT_UPDATE_INTERVAL = 100 # Update leaderboard once every x frames
 DEBUG_UPDATE_INTERVAL = 15      # Update debug screen once every x frames
 LEADERBOARD_SIZE = 3            # How many bots to show above and below player
 

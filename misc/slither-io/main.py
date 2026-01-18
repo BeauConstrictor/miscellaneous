@@ -3,6 +3,7 @@
 # script.
 
 from tkinter import messagebox
+from datetime import timedelta
 from collections import deque
 from pathlib import Path
 from tkinter import font
@@ -420,6 +421,8 @@ class UserInterface:
         self.canvas = game.canvas
         self.game = game
         self.last_orb = time.perf_counter()
+        
+        self.startup_time = time.time()
 
         self.minimap = tk.Canvas(
             self.game.root,
@@ -435,10 +438,6 @@ class UserInterface:
         self.crosshair = self.minimap.create_text(MINIMAP_SIZE/2, MINIMAP_SIZE/2,
                                                   text="+", fill="white",
                                                   font=("Arial", 16))
-        
-        self.placement = self.minimap.create_text(UI_PADDING+5, UI_PADDING,
-                                                  text="1st", fill="white",
-                                                  font=("Arial", 12))
         
         self.text = self.canvas.create_text(UI_PADDING, UI_PADDING,
                                             text=f"",
@@ -497,6 +496,9 @@ class UserInterface:
         segments = len(self.game.snake.positions)
         for a in self.game.ais:
             segments += len(a.positions)
+            
+        elapsed = time.time() - self.startup_time
+        playtime = str(timedelta(seconds=elapsed)).split(".")[0]
         
         text = ""
         
@@ -504,6 +506,7 @@ class UserInterface:
                 f"Length:        {len(self.game.snake.positions)}\n"\
                 f"Kills:         {self.game.snake.kills}\n"\
                 f"Players:       {len(self.game.ais) + 1}\n"\
+                f"Playtime:      {playtime}\n"\
                 f"\n"
         
         if self.dev_mode:
@@ -581,11 +584,6 @@ class UserInterface:
         for s in snakes_to_remove: del self.heads[s]
             
         self.minimap.tag_raise(self.crosshair)
-                
-        if self.game.frame % PLACEMENT_UPDATE_INTERVAL == 0:
-            snakes = sorted(self.game.ais + [self.game.snake], key=lambda s: len(s.positions), reverse=True)
-            place = snakes.index(self.game.snake) + 1
-            self.minimap.itemconfig(self.placement, text=ordinal_word(place))
             
         if self.game.frame % DEBUG_UPDATE_INTERVAL == 0:
             self.text_content = self.generate_text()
