@@ -203,6 +203,8 @@ class PlayerSnake(Snake):
         
         self.debug_grow = False
         self.game.root.bind("<KeyPress>", self.keypress)
+        
+        self.kills = 0
             
         self.last_movement = (0, 0)
         
@@ -322,6 +324,7 @@ class AiSnake(Snake):
             if dist < bot_r + plr_r:
                 self.game.ais.remove(self)
                 self.kill()
+                self.game.snake.kills += 1
                 return
 
 class Orb:
@@ -447,7 +450,7 @@ class UserInterface:
         self.text = self.canvas.create_text(UI_PADDING, UI_PADDING,
                                             text=f"",
                                             fill="white",
-                                            font=("Arial", 12))
+                                            font=("Courier", 12, "bold"))
         
         self.heads = {}
         
@@ -503,20 +506,25 @@ class UserInterface:
         
         text = ""
         
+        text += f"Stats:\n\n"\
+                f"Length:     {len(self.game.snake.positions)}\n"\
+                f"Kills:      {self.game.snake.kills}\n"\
+                f"Players:    {len(self.game.ais) + 1}\n"\
+                f"\n"
+        
         if self.dev_mode:
-            text = f"Debug Menu:\n\n" \
-                   f"FPS: {fps}\n" \
-                   f"FPS Cap: {TARGET_FPS}\n"\
-                   f"Digesting: {self.game.snake.add_length}\n"\
-                   f"Coords: {pos[0]:.1f}, {pos[1]:.1f}\n"\
-                   f"Length: {len(self.game.snake.positions)} (in all snakes: {segments})\n"\
-                   f"Bots: {len(self.game.ais)}\n"\
-                   f"Frame: {self.game.frame}\n"\
-                   f"Delta Time: {self.game.dt}\n"\
-                   f"Zoom Out: {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
-                   f"On Screen: {len(self.canvas.find_all())} objects (included culled)\n"\
-                   f"Last Orb: {time.perf_counter() - self.last_orb:.1f}s\n"\
-                   f"\n"
+            text += f"Debug Menu:\n\n" \
+                    f"FPS:        {fps}\n" \
+                    f"FPS Cap:    {TARGET_FPS}\n"\
+                    f"Digesting:  {self.game.snake.add_length}\n"\
+                    f"Coords:     {pos[0]:.1f}, {pos[1]:.1f}\n"\
+                    f"Frame:      {self.game.frame}\n"\
+                    f"Delta Time: {self.game.dt}\n"\
+                    f"Zoom Out:   {shrink_factor(len(self.game.snake.positions)):.3f}x\n"\
+                    f"Bots:       {len(self.game.ais)}\n"\
+                    f"On Screen:  {len(self.canvas.find_all())} objects (included culled)\n"\
+                    f"Last Orb:   {time.perf_counter() - self.last_orb:.1f}s\n"\
+                    f"\n"
                    
         text += "Leaderboard:\n\n"
         leaderboard = sorted(self.game.ais + [self.game.snake],
@@ -528,16 +536,17 @@ class UserInterface:
         trimmed = leaderboard[start:end]
 
         for i, s in enumerate(trimmed, start=start):
-            text += f"{ordinal_word(i+1)}: {s.name}\n"
+            text += f"{(ordinal_word(i+1) + ":").ljust(11, " ")} {s.name}\n"
         text += "\n"
             
         text += "Controls:\n\n"\
-                "Move: Mouse\n"\
-                "Boost: Left-click\n"\
-                "Pause: Space\n"\
-                "Zoom out: Right-click\n"\
+                "Move:       Mouse\n"\
+                "Boost:      Left-click\n"\
+                "Pause:      Space\n"\
+                "Zoom out:   Right-click\n"\
                 "Debug Menu: N\n"\
-                "Quit: Q\n"\
+                "Quit:       Q\n"\
+                "\n"
                     
         if self.game.debug_mode:
             text += "Grow: G\n"\
