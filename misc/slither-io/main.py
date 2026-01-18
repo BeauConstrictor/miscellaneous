@@ -438,7 +438,7 @@ class Orb:
             self.y = shaken_y
 
         for snake in self.snakes:
-            snake.pos()
+            radius = snake_radius(len(snake.positions))
             dist, dx, dy = distance(snake.pos(), (shaken_x, shaken_y))
 
             if dist < snake_radius(len(snake.positions)) + self.radius:
@@ -448,7 +448,7 @@ class Orb:
                     snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
                 if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
                 self.regen()
-            elif dist < ORB_ATTRACTION_DIST:
+            elif dist < ORB_ATTRACTION_DIST + radius:
                 strength = ORB_ATTRACTION * (1 - dist / ORB_ATTRACTION_DIST) ** 2
                 self.x += dx * strength
                 self.y += dy * strength

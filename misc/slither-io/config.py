@@ -49,7 +49,7 @@ LOW_QUAL_CULLING_LEEWAY = 50    # How far off-screen to draw to prevent things
 # Gameplay
 ORB_SHAKE = 10                  # How vigorously the normal orbs shake
 ORB_SHAKE_RATE = 20             # How vigorously the normal orbs shake
-ORB_ATTRACTION = 0.6            # How quickly orbs come to you
+ORB_ATTRACTION = 2.0            # How quickly orbs come to you
 BIG_ORB_SHAKE_RATE = 100        # How vigorously the big orbs shake
 CORPSE_SPREAD = 20              # How spread out the orbs from a corpse are
 ORB_ATTRACTION_DIST = 100       # How close you need to be to an orb to eat it 
@@ -76,13 +76,13 @@ AI_NOISE_SCALE = 0.01           # How random the AI's movement looks
 
 # How wide the snake should be
 def snake_radius(length: int) -> float:
-    return 10 + length / 10
+    return 7 + length / 5
 
 # How much to zoom out by normally
 def zoomed_in_sf(length: int) -> float:
     return length / 400 + 1
 
-# When holding RM, how much to zoom out by
+# When holding RMB, how much to zoom out by
 def zoomed_out_sf(length: int) -> float:
     return 15
 
