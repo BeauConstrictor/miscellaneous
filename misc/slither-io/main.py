@@ -909,9 +909,9 @@ class Game:
         def toggle_low_quality() -> None:
             self.low_quality = not self.low_quality
             if self.low_quality:
-                self.low_quality_btn["text"] = "Low quality: ON"
+                self.low_quality_btn["text"] = "Graphics: LOW"
             else:
-                self.low_quality_btn["text"] = "Low qualiy: OFF"
+                self.low_quality_btn["text"] = "Graphics: HIGH"
         
         self.debug_mode_warning = tk.Button(self.root, text="",
                                        command=toggle_debug_mode,
