@@ -5,7 +5,7 @@ import math
 import time
 
 SIM_SPEED = 0.01
-DRAG = 0.9995
+DRAG = 1
 G = 5000000000
 BEZEL = "gray"
 CENTER = (0, 0)
