@@ -5,6 +5,7 @@
 from tkinter import messagebox
 from collections import deque
 from pathlib import Path
+from tkinter import font
 import tkinter as tk
 import pathlib
 import random
@@ -201,13 +202,12 @@ class PlayerSnake(Snake):
         super().__init__(game, name="Player")
         
         self.debug_grow = False
-        if ALLOW_DEBUG_CHEATS:
-            self.game.root.bind("<KeyPress>", self.keypress)
+        self.game.root.bind("<KeyPress>", self.keypress)
             
         self.last_movement = (0, 0)
         
     def keypress(self, e: tk.Event) -> None:
-        if e.char == "g":
+         if e.char == "g" and self.game.debug_mode:
             self.debug_grow = not self.debug_grow
 
     def move(self) -> tuple[float, float]:
@@ -459,7 +459,7 @@ class UserInterface:
         self.heads = {}
         
         self.text_content = ""
-        self.dev_mode = ALLOW_DEBUG_CHEATS
+        self.dev_mode = self.game.debug_mode
         
     def show_game_over(self) -> None:
         # for obj in self.canvas.find_all():
@@ -533,7 +533,7 @@ class UserInterface:
                 "Debug Menu: N\n"\
                 "Quit: Q\n"\
                     
-        if ALLOW_DEBUG_CHEATS:
+        if self.game.debug_mode:
             text += "Grow: G\n"\
         
         return text
@@ -654,6 +654,7 @@ class Game:
         self.paused = False
         self.zoomed_out = False
         self.pause_text = None
+        self.debug_mode = False
         
         self.frame_interval = math.floor(1000/TARGET_FPS)
     
@@ -690,10 +691,6 @@ class Game:
         self.root.bind("Q", self.quit_game)
         self.root.bind("n", self.ui.toggle_dev)
         self.root.bind("N", self.ui.toggle_dev)
-        self.root.bind("<space>", self.pause)
-        
-        self.root.bind("<ButtonPress-3>", self.zoom_out)
-        self.root.bind("<ButtonRelease-3>", self.zoom_in)
         
     def zoom_out(self, _=None) -> None:
         global shrink_factor
@@ -786,27 +783,59 @@ class Game:
             
         self.bg.draw()
         
-        title = self.canvas.create_text(self.window_width/2,
-                                        self.window_height/2-100,
-                                        text="slither.io", font=("Arial", 48),
-                                        fill="white")
+        self.title_img = tk.PhotoImage(file="title.png")
         
-        entry = tk.Entry(self.root)
+        title = self.canvas.create_image(self.window_width/2,
+                                         self.window_height/2-100,
+                                         image=self.title_img)
+        
+        entry = tk.Entry(self.root, bg="#4c447c", fg="#e0e0ff",
+                         highlightthickness=0, bd=0,
+                         font=("Arial", 16))
         entry.insert(tk.END, Path.home().name)
-        entry.place(x=self.window_width/2, y=self.window_height/2,
+        entry.place(x=self.window_width/2, y=self.window_height/2+50,
                     anchor="center")
         
         def start_game(_=None) -> None:
             self.snake.set_name(entry.get())
             self.canvas.delete(title)
             entry.destroy()
-            button.destroy()
+            play_btn.destroy()
+            debug_mode_warning.destroy()
+            self.root.bind("<space>", self.pause)
+            self.root.bind("<ButtonPress-3>", self.zoom_out)
+            self.root.bind("<ButtonRelease-3>", self.zoom_in)
             self.update()
             
-        button = tk.Button(self.root, text="Play!", command=start_game)
-        button.place(x=self.window_width/2, y=self.window_height/2+50,
-                    anchor="center")
+        play_btn = tk.Button(self.root, text="Play!", command=start_game,
+                             bg="#60e088", fg="#edf4f1", relief="flat",
+                             highlightthickness=0, bd=0,
+                             font=("Arial", 16))
+        play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
+                       anchor="center")
+
+
+        play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
+                     anchor="center")
         
+        
+        def toggle_debug_mode() -> None:
+            self.debug_mode = not self.debug_mode
+            if self.debug_mode:
+                debug_mode_warning["text"] = "Debug mode: ON"
+            else:
+                debug_mode_warning["text"] = "Debug mode: OFF"
+        
+        debug_mode_warning = tk.Button(self.root, text="",
+                                       command=toggle_debug_mode,
+                                       bg="#60e088", fg="#edf4f1", relief="flat",
+                                       highlightthickness=0, bd=0,
+                                       font=("Arial", 16))
+        debug_mode_warning.place(x=UI_PADDING,y=self.window_height-UI_PADDING,
+                                 anchor="sw")
+        toggle_debug_mode()
+        toggle_debug_mode()
+                
         self.root.mainloop()
 
 if __name__ == "__main__":

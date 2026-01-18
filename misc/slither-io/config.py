@@ -71,8 +71,6 @@ AI_TURN_SPEED = 0.1             # Max amount a bot can turn
 AI_REPEL_WEIGHT = 1.0           # How hard the AI will try to avoid player
 AI_REPEL_DISTANCE = 200         # How far away a bot will avoid the player
 AI_NOISE_SCALE = 0.01           # How random the AI's movement looks
-ALLOW_DEBUG_CHEATS = True       # Enable special keys and open debug menu on
-                                # startup
 
 # How wide the snake should be
 def snake_radius(length: int) -> float:
