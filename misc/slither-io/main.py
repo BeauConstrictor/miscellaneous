@@ -435,13 +435,6 @@ class UserInterface:
             highlightthickness=2,
             highlightbackground="white"
         )
-        self.minimap.place(
-            relx=1.0,
-            rely=1.0,
-            x=-MINIMAP_PADDING,
-            y=-MINIMAP_PADDING,
-            anchor="se"
-        )
         
         self.crosshair = self.minimap.create_text(MINIMAP_SIZE/2, MINIMAP_SIZE/2,
                                                   text="+", fill="white",
@@ -460,6 +453,19 @@ class UserInterface:
         
         self.text_content = ""
         self.dev_mode = self.game.debug_mode
+        
+        self.hide_minimap()
+        
+    def show_minimap(self) -> None:
+        self.minimap.place(
+            relx=1.0,
+            rely=1.0,
+            x=-MINIMAP_PADDING,
+            y=-MINIMAP_PADDING,
+            anchor="se"
+        )
+    def hide_minimap(self) -> None:
+        self.minimap.place_forget()
         
     def show_game_over(self) -> None:
         # for obj in self.canvas.find_all():
@@ -802,6 +808,7 @@ class Game:
             entry.destroy()
             play_btn.destroy()
             debug_mode_warning.destroy()
+            self.ui.show_minimap()
             self.root.bind("<space>", self.pause)
             self.root.bind("<ButtonPress-3>", self.zoom_out)
             self.root.bind("<ButtonRelease-3>", self.zoom_in)
