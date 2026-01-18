@@ -91,10 +91,17 @@ class Snake:
             (start_x, start_y + i*5)
             for i in range(self.initial_len())
         )
-        self.segments = [
-            self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
-            for _ in self.positions
-        ]
+        
+        if self.game.low_quality:
+            self.line = self.canvas.create_line(0, 0, 0, 0,
+                                                fill=self.accent)
+            self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary)
+            self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent)
+        else:
+            self.segments = [
+                self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
+                for _ in self.positions
+            ]
         
         self.name = name
         self.nametag = self.canvas.create_text(-1000, -1000, text=self.name,
@@ -126,8 +133,12 @@ class Snake:
                 o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
                 self.game.orbs.append(o)
                         
-        for s in self.segments:
-            self.canvas.delete(s)
+        if self.game.low_quality:
+            self.canvas.delete(self.line)
+            self.canvas.delete(self.head)
+            self.canvas.delete(self.tail)
+        else:
+            for s in self.segments: self.canvas.delete(s)
         self.canvas.delete(self.nametag)
         self.dead = True
     
@@ -141,24 +152,66 @@ class Snake:
         else:
             for i in range(self.shorten_rate()):
                 self.positions.popleft()
-                oval = self.segments.pop(0)
-                if new_oval:
-                    self.canvas.delete(oval)
-                else:
-                    new_oval = oval
+                if not self.game.low_quality:
+                    oval = self.segments.pop(0)
+                    if new_oval:
+                        self.canvas.delete(oval)
+                    else:
+                        new_oval = oval
        
         self.positions.append(self.move())
         
-        seg = new_oval or self.canvas.create_oval(0,0,0,0,
-                                                  fill=self.accent,
-                                                  outline=self.primary,
-                                                  tags=("snake",))
+        if not self.game.low_quality:
+            seg = new_oval or self.canvas.create_oval(0,0,0,0,
+                                                    fill=self.accent,
+                                                    outline=self.primary,
+                                                    tags=("snake",))
+            self.segments.append(seg)
             
-        self.segments.append(seg)
-        
         self.extra_step()
     
-    def draw(self) -> None:
+    def draw_low_quality(self) -> None:
+        sf = shrink_factor(len(self.game.snake.positions))
+        radius = snake_radius(len(self.positions)) / sf
+        px, py = self.game.snake.pos()
+
+        coords = []
+
+        for i, (x, y) in enumerate(self.positions):
+            rel_x = (x - px)/sf + self.game.window_width/2
+            rel_y = (y - py)/sf + self.game.window_height/2
+
+            if rel_x + radius < 0 or rel_x - radius > self.game.window_width \
+            or rel_y + radius < 0 or rel_y - radius > self.game.window_height:
+                if i == len(self.positions)-1:
+                    self.canvas.itemconfig(self.nametag, state="hidden")
+                continue
+
+            coords.append(rel_x)
+            coords.append(rel_y)
+            
+            if i == len(self.positions)-1:
+                self.canvas.coords(self.head, rel_x-radius, rel_y-radius,
+                                              rel_x+radius, rel_y+radius)
+            if i == 0:
+                self.canvas.coords(self.tail, rel_x-radius, rel_y-radius,
+                                              rel_x+radius, rel_y+radius)
+
+        if len(coords) >= 4:
+            self.canvas.coords(self.line, *coords)
+            self.canvas.itemconfig(self.line,
+                                   width=radius*2)
+            self.canvas.itemconfig(self.head,
+                                   state="normal")
+            self.canvas.tag_raise(self.line)
+            self.canvas.tag_raise(self.head)
+        else:
+            self.canvas.itemconfig(self.line,
+                                   width=0)
+            self.canvas.itemconfig(self.head,
+                                   state="hidden")
+    
+    def draw_high_quality(self) -> None:
         sf = shrink_factor(len(self.game.snake.positions))
         radius = snake_radius(len(self.positions)) / sf
         px, py = self.game.snake.pos()
@@ -195,8 +248,12 @@ class Snake:
                     self.canvas.itemconfig(seg,
                         fill=self.accent, outline=self.primary)
 
-        
-        x, y = self.pos()
+    
+    def draw(self) -> None:
+        if self.game.low_quality:
+            self.draw_low_quality()
+        else:
+            self.draw_high_quality()
 
 class PlayerSnake(Snake):
     def __init__(self, game: "Game") -> None:
@@ -492,10 +549,6 @@ class UserInterface:
     def generate_text(self) -> str:
         fps = round(1/self.game.dt)
         pos = self.game.snake.pos()
-        
-        segments = len(self.game.snake.positions)
-        for a in self.game.ais:
-            segments += len(a.positions)
             
         elapsed = time.time() - self.startup_time
         playtime = str(timedelta(seconds=elapsed)).split(".")[0]
@@ -595,7 +648,6 @@ class UserInterface:
 class Background:
     def __init__(self, game: "Game") -> None:
         self.canvas = game.canvas
-        self.snake = game.snake
         self.game = game
 
         self.original_tile_width = BG_WIDTH
@@ -631,8 +683,13 @@ class Background:
                 self.tile_positions.append([wx, wy])
     
     def draw(self) -> None:
-        sf = shrink_factor(len(self.snake.positions))
-        cam_x, cam_y = self.snake.pos()
+        if hasattr(self.game, "snake"):
+            sf = shrink_factor(len(self.game.snake.positions))
+            cam_x, cam_y = self.game.snake.pos()
+        else:
+            sf = 1
+            cam_x, cam_y = 0, 0
+            
         cam_x /= sf
         cam_y /= sf
 
@@ -665,7 +722,9 @@ class Game:
         self.zoomed_out = False
         self.game_over = False
         self.pause_text = None
+        
         self.debug_mode = False
+        self.low_quality = False
         
         self.frame_interval = math.floor(1000/TARGET_FPS)
     
@@ -680,10 +739,7 @@ class Game:
         self.canvas.pack()
     
         self.ui = UserInterface(self)
-        self.snake = PlayerSnake(self)
-        self.ais = [AiSnake(self) for _ in range(AI_COUNT)]
         self.bg = Background(self)
-        self.orbs = [Orb(self) for _ in range(ORB_COUNT)]
     
         set_z_height(self.canvas)
 
@@ -713,7 +769,7 @@ class Game:
         
     def restart(self, _=None) -> None:
         self.root.destroy()
-        Game().start()
+        Game().title_screen()
         
     def pause(self, _=None) -> None:
         self.paused = not self.paused
@@ -785,69 +841,92 @@ class Game:
         
         self.root.after(1 if TARGET_FPS == -1 else delay, self.update)
 
-    def start(self) -> None:
+    def start_game(self, _=None) -> None:
+        self.snake = PlayerSnake(self)
+        self.ais = [AiSnake(self) for _ in range(AI_COUNT)]
+        self.orbs = [Orb(self) for _ in range(ORB_COUNT)]
+        
+        self.snake.set_name(self.entry.get())
+        self.canvas.delete(self.title)
+        self.entry.destroy()
+        self.play_btn.destroy()
+        self.debug_mode_warning.destroy()
+        self.ui.show_minimap()
+        
+        self.root.bind("<space>", self.pause)
+        self.root.bind("<ButtonPress-3>", self.zoom_out)
+        self.root.bind("<ButtonRelease-3>", self.zoom_in)
+        
         for i in range(STARTING_LENGTH[1]):
             for a in self.ais:
                 a.step()
             time.sleep(0.002)
+        
+        self.update()
+
+    def title_screen(self) -> None:
             
         self.bg.draw()
         
         self.title_img = tk.PhotoImage(file="title.png")
         
-        title = self.canvas.create_image(self.window_width/2,
+        self.title = self.canvas.create_image(self.window_width/2,
                                          self.window_height/2-100,
                                          image=self.title_img)
         
-        entry = tk.Entry(self.root, bg="#4c447c", fg="#e0e0ff",
+        self.entry = tk.Entry(self.root, bg="#4c447c", fg="#e0e0ff",
                          highlightthickness=0, bd=0,
                          font=("Arial", 16))
-        entry.insert(tk.END, Path.home().name)
-        entry.place(x=self.window_width/2, y=self.window_height/2+50,
+        self.entry.insert(tk.END, Path.home().name)
+        self.entry.place(x=self.window_width/2, y=self.window_height/2+50,
                     anchor="center")
-        
-        def start_game(_=None) -> None:
-            self.snake.set_name(entry.get())
-            self.canvas.delete(title)
-            entry.destroy()
-            play_btn.destroy()
-            debug_mode_warning.destroy()
-            self.ui.show_minimap()
-            self.root.bind("<space>", self.pause)
-            self.root.bind("<ButtonPress-3>", self.zoom_out)
-            self.root.bind("<ButtonRelease-3>", self.zoom_in)
-            self.update()
             
-        play_btn = tk.Button(self.root, text="Play!", command=start_game,
+        self.play_btn = tk.Button(self.root, text="Play!", command=self.start_game,
                              bg="#60e088", fg="#edf4f1", relief="flat",
                              highlightthickness=0, bd=0,
                              font=("Arial", 16))
-        play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
+        self.play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
                        anchor="center")
 
 
-        play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
+        self.play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
                      anchor="center")
         
         
         def toggle_debug_mode() -> None:
             self.debug_mode = not self.debug_mode
             if self.debug_mode:
-                debug_mode_warning["text"] = "Debug mode: ON"
+                self.debug_mode_warning["text"] = "Debug mode: ON"
             else:
-                debug_mode_warning["text"] = "Debug mode: OFF"
+                self.debug_mode_warning["text"] = "Debug mode: OFF"
+        def toggle_low_quality() -> None:
+            self.low_quality = not self.low_quality
+            if self.low_quality:
+                self.low_quality_btn["text"] = "Low quality: ON"
+            else:
+                self.low_quality_btn["text"] = "Low qualiy: OFF"
         
-        debug_mode_warning = tk.Button(self.root, text="",
+        self.debug_mode_warning = tk.Button(self.root, text="",
                                        command=toggle_debug_mode,
-                                       bg="#60e088", fg="#edf4f1", relief="flat",
+                                       relief="flat",
                                        highlightthickness=0, bd=0,
                                        font=("Arial", 16))
-        debug_mode_warning.place(x=UI_PADDING,y=self.window_height-UI_PADDING,
+        self.debug_mode_warning.place(x=UI_PADDING,y=self.window_height-UI_PADDING,
                                  anchor="sw")
         toggle_debug_mode()
         toggle_debug_mode()
+        
+        self.low_quality_btn = tk.Button(self.root, text="",
+                                       command=toggle_low_quality,
+                                       bg="#60e088", fg="#edf4f1", relief="flat",
+                                       highlightthickness=0, bd=0,
+                                       font=("Arial", 16))
+        self.low_quality_btn.place(x=UI_PADDING,y=self.window_height-UI_PADDING-16*2-UI_PADDING,
+                                 anchor="sw")
+        toggle_low_quality()
+        toggle_low_quality()
                 
         self.root.mainloop()
 
 if __name__ == "__main__":
-    Game().start()
+    Game().title_screen()
