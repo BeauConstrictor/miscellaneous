@@ -186,7 +186,6 @@ class Snake:
             rel_x = (x - px)/sf + self.game.window_width/2
             rel_y = (y - py)/sf + self.game.window_height/2
             
-
             if rel_x + radius < -LOW_QUAL_CULLING_LEEWAY or rel_x - radius > self.game.window_width + LOW_QUAL_CULLING_LEEWAY \
             or rel_y + radius < -LOW_QUAL_CULLING_LEEWAY or rel_y - radius > self.game.window_height + LOW_QUAL_CULLING_LEEWAY:
                 if i == len(self.positions)-1:
@@ -393,14 +392,12 @@ class Orb:
         
         self.color = random.choice(PALETTE)
         
-        
         self.is_temp = pos is not None
         if self.is_temp:
             self.x, self.y = pos
         else:
             self.rand_pos()
             
-        
         self.is_big = random.choice([False] * BIG_ORB_CHANCE + [True])
         if self.is_big:
             self.radius = 30
@@ -821,7 +818,8 @@ class Game:
         self.ui.draw()
 
     def update(self):
-        if self.paused or self.game_over:
+        if self.paused or self.game_over or \
+        (self.zoomed_out and not self.low_quality):
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
             return
