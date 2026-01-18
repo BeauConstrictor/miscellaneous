@@ -183,6 +183,7 @@ class Snake:
             
             rel_x = (x - px)/sf + self.game.window_width/2
             rel_y = (y - py)/sf + self.game.window_height/2
+            
 
             if rel_x + radius < -LOW_QUAL_CULLING_LEEWAY or rel_x - radius > self.game.window_width + LOW_QUAL_CULLING_LEEWAY \
             or rel_y + radius < -LOW_QUAL_CULLING_LEEWAY or rel_y - radius > self.game.window_height + LOW_QUAL_CULLING_LEEWAY:
@@ -192,6 +193,10 @@ class Snake:
                 elif i == 0:
                     self.canvas.itemconfig(self.tail, state="hidden")
                 continue
+            
+            if i == len(self.positions)-1:
+                self.canvas.coords(self.nametag, rel_x, rel_y-NAMETAG_HEIGHT)
+                self.canvas.itemconfig(self.nametag, state="normal")
 
             coords.append(rel_x)
             coords.append(rel_y)
@@ -199,6 +204,7 @@ class Snake:
             if i == len(self.positions)-1:
                 self.canvas.coords(self.head, rel_x-radius, rel_y-radius,
                                               rel_x+radius, rel_y+radius)
+                self.canvas.coords(self.nametag, rel_x, rel_y-NAMETAG_HEIGHT)
             if i == 0:
                 self.canvas.coords(self.tail, rel_x-radius, rel_y-radius,
                                               rel_x+radius, rel_y+radius)
@@ -210,6 +216,7 @@ class Snake:
             self.canvas.itemconfig(self.head, state="normal")
             self.canvas.tag_raise(self.line)
             self.canvas.tag_raise(self.head)
+            self.canvas.tag_raise(self.nametag)
         else:
             self.canvas.itemconfig(self.line, state="hidden")
     
@@ -470,7 +477,6 @@ class Orb:
         y = oy + self.game.window_height/2
         
         r = self.radius / sf
-       
         self.canvas.coords(self.id,
                            x - r, y - r,
                            x + r, y + r,)
@@ -816,7 +822,7 @@ class Game:
         self.ui.draw()
 
     def update(self):
-        if self.paused or self.zoomed_out or self.game_over:
+        if self.paused or self.game_over:
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
             return
@@ -867,8 +873,7 @@ class Game:
         
         self.update()
 
-    def title_screen(self) -> None:
-            
+    def title_screen(self) -> None:   
         self.bg.draw()
         
         self.title_img = tk.PhotoImage(file="title.png")
