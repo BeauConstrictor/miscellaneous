@@ -39,7 +39,7 @@ BG_HEIGHT = 519
 # Performance
 TARGET_FPS = 40                 # FPS cap
 AI_COUNT = 10                   # How many bots to include
-ORB_COUNT = 50                  # How many non-corpse orbs to place at once
+ORB_COUNT = 150                  # How many non-corpse orbs to place at once
 COLLISION_DETECT_GAP = 1        # Higher = better FPS, but less reliable
                                 # collisions
 LOW_QUALITY_FIDELITY = 1        # Higher = better FPS, blockier snakes
@@ -50,6 +50,7 @@ PREPARE_SNAKES = False          # Causes a longer load time as the snakes are
                                 # put in organic positions at startup. Without,
                                 # snakes are in a vertical line.
 AI_FINDS_ORBS = True            # Whether or not the AI actively seeks out orbs
+LOCAL_ORBS = False               # Orbs only spawn around the player
 
 # Gameplay
 ORB_SHAKE = 10                  # How vigorously the normal orbs shake
@@ -71,7 +72,6 @@ STARTING_LENGTH = (20, 300)     # Starting length of player (left), and min-max
 CORPSE_USELESSNESS = 6          # The higher, the less you get from corpses
 MAX_EATEN_AT_ONCE = 30          # Max digesting orbs at a time
 ORBS_PER_CORPSE_SEGMENT = 3     # How many orbs to spawn per segment in a corpse
-
 # Bot AI
 AI_PERLIN_SWAY = 0.05           # How random the AI's movement looks
 AI_TURN_SPEED = 0.3             # Max amount a bot can turn

@@ -247,7 +247,7 @@ class Snake:
                 elif (i+1) % 6 == 0:
                     self.canvas.itemconfig(seg,
                         fill=self.primary, outline=self.primary)
-                elif (i+2) % 6 == 0:
+                else:
                     self.canvas.itemconfig(seg,
                         fill=self.accent, outline=self.accent)
     
@@ -432,10 +432,14 @@ class Orb:
                                      tags=(tag,), width=5)
         
     def rand_pos(self) -> None:
-        r = self.game.visible_radius()
-        sx, sy = self.player.pos()
-        self.x = random.uniform(sx - r, sx + r)
-        self.y = random.uniform(sy - r, sy + r)
+        if LOCAL_ORBS:
+            r = self.game.visible_radius()
+            sx, sy = self.player.pos()
+            self.x = random.uniform(sx - r, sx + r)
+            self.y = random.uniform(sy - r, sy + r)
+        else:
+            self.x = random.gauss(-SPAWN_RADIUS, SPAWN_RADIUS)
+            self.y = random.gauss(-SPAWN_RADIUS, SPAWN_RADIUS)
         
     def regen(self) -> None:
         if self.is_temp:
@@ -477,7 +481,7 @@ class Orb:
                 self.x += attraction[0]
                 self.y += attraction[1]
 
-        if distance(self.player.pos(), (shaken_x, shaken_y))[0] > self.game.visible_radius() and not self.is_temp:
+        if distance(self.player.pos(), (shaken_x, shaken_y))[0] > self.game.visible_radius() and not self.is_temp and LOCAL_ORBS:
             self.regen()
 
     def draw(self) -> None:
