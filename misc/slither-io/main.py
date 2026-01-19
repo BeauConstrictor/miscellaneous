@@ -2,11 +2,9 @@
 # noise is a small perlin noise lib i wrote which should be placed next to this
 # script.
 
-from tkinter import messagebox
 from datetime import timedelta
 from collections import deque
 from pathlib import Path
-from tkinter import font
 import tkinter as tk
 import pathlib
 import random
@@ -78,7 +76,7 @@ class Snake:
     def __init__(self, game: "Game", name = "Snake") -> None:
         
         self.canvas = game.canvas
-        start_x, start_y = random.randint(-SPAWN_RADIUS, SPAWN_RADIUS), random.randint(-SPAWN_RADIUS, SPAWN_RADIUS)
+        start_x, start_y = random.gauss(-SPAWN_RADIUS, SPAWN_RADIUS), random.gauss(-SPAWN_RADIUS, SPAWN_RADIUS)
         self.add_length = 0
         self.game = game
 
@@ -92,14 +90,13 @@ class Snake:
             for i in range(self.initial_len())
         )
         
-        if self.game.low_quality:
-            self.line = self.canvas.create_line(0, 0, 0, 0,
-                                                fill=self.accent)
-            self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary,
-                                                outline=self.primary)
-            self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent,
-                                                outline=self.accent)
-        else:
+        self.line = self.canvas.create_line(0, 0, 0, 0,
+                                            fill=self.accent)
+        self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary,
+                                            outline=self.primary)
+        self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent,
+                                            outline=self.accent)
+        if not self.game.low_quality:
             self.segments = [
                 self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
                 for _ in self.positions
@@ -135,11 +132,10 @@ class Snake:
                 o = Orb(self.game, pos=(seg_pos[0]+ox, seg_pos[1]+oy))
                 self.game.orbs.append(o)
                         
-        if self.game.low_quality:
-            self.canvas.delete(self.line)
-            self.canvas.delete(self.head)
-            self.canvas.delete(self.tail)
-        else:
+        self.canvas.delete(self.line)
+        self.canvas.delete(self.head)
+        self.canvas.delete(self.tail)
+        if not self.game.low_quality:
             for s in self.segments: self.canvas.delete(s)
         self.canvas.delete(self.nametag)
         self.dead = True
@@ -251,15 +247,13 @@ class Snake:
                 elif (i+1) % 6 == 0:
                     self.canvas.itemconfig(seg,
                         fill=self.primary, outline=self.primary)
-                else:
+                elif (i+2) % 6 == 0:
                     self.canvas.itemconfig(seg,
-                        fill=self.accent, outline=self.primary)
-
+                        fill=self.accent, outline=self.accent)
     
     def draw(self) -> None:
-        if self.game.low_quality:
-            self.draw_low_quality()
-        else:
+        self.draw_low_quality()
+        if not self.game.low_quality:
             self.draw_high_quality()
 
 class PlayerSnake(Snake):
@@ -291,7 +285,11 @@ class PlayerSnake(Snake):
     def shorten_rate(self) -> int:
         if self.debug_grow:
             return 0
-        return SPRINT_LENGTH_LOSS if self.game.mouse_down and self.game.frame % 2 == 0 and len(self.positions) > STARTING_LENGTH[0] else 1
+        elif self.game.mouse_down and len(self.positions) > STARTING_LENGTH[0] \
+        and self.game.frame % SPRINT_LENGTH_LOSS == 0:
+            return 2
+        else:
+            return 1
 
     def cam_pos(self, world_pos: tuple[float, float]) -> tuple[float, float]:
         x, y = self.pos()
@@ -332,31 +330,47 @@ class AiSnake(Snake):
     def move(self) -> tuple[float, float]:
         px, py = self.pos()
 
-        perlin_adjust = noise.perlin1d(self.game.frame * AI_NOISE_SCALE + self.id) * AI_PERLIN_SWAY
-        desired_heading = self.current_heading + perlin_adjust
+        desired_heading = self.current_heading
 
-        closest_seg = min(
-            self.player.positions,
-            key=lambda p: distance((px, py), p)[0]
-        )
-        dist_seg = distance((px, py), closest_seg)[0]
-        dist_seg -= snake_radius(len(self.player.positions))
-        if dist_seg < AI_REPEL_DISTANCE:
-            dx_seg = closest_seg[0] - px
-            dy_seg = closest_seg[1] - py
-            angle_to_seg = math.atan2(dy_seg, dx_seg)
-            desired_heading += AI_REPEL_WEIGHT * ((angle_to_seg + math.pi - desired_heading + math.pi) % (2 * math.pi) - math.pi)
+        if AI_FINDS_ORBS and self.game.orbs:
+            orb = min(
+                self.game.orbs,
+                key=lambda o: distance((o.x, o.y), (px, py))[0]
+            )
+            dx_orb = orb.x - px
+            dy_orb = orb.y - py
+            angle_to_orb = math.atan2(dy_orb, dx_orb)
+            desired_heading += ORB_ATTRACT_WEIGHT * ((angle_to_orb - desired_heading + math.pi) % (2 * math.pi) - math.pi)
+        else:
+            perlin_adjust = noise.perlin1d(self.game.frame * AI_NOISE_SCALE + self.id) * AI_PERLIN_SWAY
+            desired_heading += perlin_adjust
 
-        heading_diff = ((desired_heading - self.current_heading + math.pi) % (2 * math.pi)) - math.pi
-        heading_diff = max(-AI_TURN_SPEED, min(AI_TURN_SPEED, heading_diff))
-        self.current_heading += heading_diff
+        snakes = [self.player]
+        if INTER_BOT_AI: snakes += self.game.ais
+        for s in snakes:
+            if s is self: continue
+            
+            closest_seg = min(
+                s.positions,
+                key=lambda p: distance((px, py), p)[0]
+            )
+            dist_seg = distance((px, py), closest_seg)[0]
+            dist_seg -= snake_radius(len(s.positions))
+            if dist_seg < AI_REPEL_DISTANCE:
+                dx_seg = closest_seg[0] - px
+                dy_seg = closest_seg[1] - py
+                angle_to_seg = math.atan2(dy_seg, dx_seg)
+                desired_heading += AI_REPEL_WEIGHT * ((angle_to_seg + math.pi - desired_heading + math.pi) % (2 * math.pi) - math.pi)
+
+            heading_diff = ((desired_heading - self.current_heading + math.pi) % (2 * math.pi)) - math.pi
+            heading_diff = max(-AI_TURN_SPEED, min(AI_TURN_SPEED, heading_diff))
+            self.current_heading += heading_diff
 
         move_distance = SPEED * self.game.dt
         new_x = px + math.cos(self.current_heading) * move_distance
         new_y = py + math.sin(self.current_heading) * move_distance
 
         return (new_x, new_y)
-
     
     def initial_len(self) -> int:
         return random.randint(STARTING_LENGTH[0], STARTING_LENGTH[1])    
@@ -369,19 +383,25 @@ class AiSnake(Snake):
         return world_pos[0] - px, world_pos[1] - py
     
     def extra_step(self) -> None:
-        for i, p in enumerate(self.player.positions):
-            if i % COLLISION_DETECT_GAP != 0 or i == len(self.player.positions)-1: continue
-            
-            dist, _,_ = distance(self.pos(), p)
-            
-            bot_r = snake_radius(len(self.positions))
-            plr_r = snake_radius(len(self.player.positions))
-            
-            if dist < bot_r + plr_r:
-                self.game.ais.remove(self)
-                self.kill()
-                self.game.snake.kills += 1
-                return
+        snakes = [self.player]
+        if INTER_BOT_AI: snakes += self.game.ais
+        for s in snakes:
+            for i, p in enumerate(s.positions):
+                if i % COLLISION_DETECT_GAP != 0 or i > len(s.positions)-COLLISION_DETECT_GAP:
+                    continue
+                if s is self:
+                    continue
+                
+                dist, _,_ = distance(self.pos(), p)
+                
+                bot_r = snake_radius(len(self.positions))
+                snk_r = snake_radius(len(s.positions))
+                
+                if dist < bot_r + snk_r:
+                    self.game.ais.remove(self)
+                    self.kill()
+                    if s is self.player: self.game.snake.kills += 1
+                    return
 
 class Orb:
     def __init__(self, game: "Game", pos: tuple[float, float]|None = None) -> None:
@@ -402,7 +422,9 @@ class Orb:
         if self.is_big:
             self.radius = 30
         else:
-            self.radius = random.randint(3, 15)
+            min_size = math.ceil(1/ORB_LENGTH_ADD)
+            max_size = min_size*ORB_MAX_SIZE
+            self.radius = random.uniform(min_size, max_size)
         
         tag = "big_orbs" if self.is_big else "orbs"
         self.id = self.canvas.create_oval(0,0,0,0, fill=rgb_to_hex(self.color),
@@ -421,11 +443,13 @@ class Orb:
             if self in self.game.orbs: self.game.orbs.remove(self)
             return
         
-        self.is_big = random.choice([False] * BIG_ORB_CHANCE + [True])
+        self.is_big = random.choice([False] * (BIG_ORB_CHANCE-1) + [True])
         if self.is_big:
             self.radius = 30
         else:
-            self.radius = random.randint(3, 15)
+            min_size = math.ceil(1/ORB_LENGTH_ADD)
+            max_size = min_size*ORB_MAX_SIZE
+            self.radius = random.uniform(min_size, max_size)
         self.rand_pos()
 
     def step(self) -> None:
@@ -445,7 +469,7 @@ class Orb:
                 if self.is_big:
                     snake.add_length += MAX_EATEN_AT_ONCE
                 else:
-                    snake.add_length += math.floor(self.radius * ORB_LENGTH_ADD)
+                    snake.add_length += math.ceil(self.radius * ORB_LENGTH_ADD)
                 if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
                 self.regen()
             elif dist < ORB_ATTRACTION_DIST + radius + self.radius:
@@ -732,7 +756,7 @@ class Game:
         self.pause_text = None
         
         self.debug_mode = False
-        self.low_quality = False
+        self.low_quality = True
         
         self.frame_interval = math.floor(1000/TARGET_FPS)
     
@@ -740,7 +764,6 @@ class Game:
         
         self.root.title("slither.io")
         self.root.attributes("-fullscreen", True)
-        
 
         self.canvas = tk.Canvas(self.root, width=self.window_width,
                                 height=self.window_height, bg="black")
@@ -855,7 +878,7 @@ class Game:
         self.canvas.delete(self.title)
         self.entry.destroy()
         self.play_btn.destroy()
-        self.debug_mode_warning.destroy()
+        self.debug_mode_btn.destroy()
         self.low_quality_btn.destroy()
         self.ui.show_minimap()
         
@@ -863,10 +886,21 @@ class Game:
         self.root.bind("<ButtonPress-3>", self.zoom_out)
         self.root.bind("<ButtonRelease-3>", self.zoom_in)
         
-        for i in range(STARTING_LENGTH[1]):
-            for a in self.ais:
-                a.step()
-            time.sleep(0.002)
+        for o in self.orbs:
+            o.draw()
+            
+        loading = self.canvas.create_text(self.window_width/2, self.window_height/2,
+                                          text="Loading...", fill="white",
+                                          font=("Arial", 16))
+        
+        if PREPARE_SNAKES:
+            self.root.update()
+            for i in range(STARTING_LENGTH[1]):
+                for a in self.ais:
+                    a.step()
+            self.root.update()
+        
+        self.canvas.delete(loading)
         
         self.update()
 
@@ -876,34 +910,29 @@ class Game:
         self.title_img = tk.PhotoImage(file="title.png")
         
         self.title = self.canvas.create_image(self.window_width/2,
-                                         self.window_height/2-100,
+                                         self.window_height/2-70,
                                          image=self.title_img)
         
         self.entry = tk.Entry(self.root, bg="#4c447c", fg="#e0e0ff",
                          highlightthickness=0, bd=0,
                          font=("Arial", 16))
         self.entry.insert(tk.END, Path.home().name)
-        self.entry.place(x=self.window_width/2, y=self.window_height/2+50,
+        self.entry.place(x=self.window_width/2, y=self.window_height/2+80,
                     anchor="center")
             
         self.play_btn = tk.Button(self.root, text="Play!", command=self.start_game,
                              bg="#60e088", fg="#edf4f1", relief="flat",
                              highlightthickness=0, bd=0,
                              font=("Arial", 16))
-        self.play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
+        self.play_btn.place(x=self.window_width/2, y=self.window_height/2+130,
                        anchor="center")
 
-
-        self.play_btn.place(x=self.window_width/2, y=self.window_height/2+100,
-                     anchor="center")
-        
-        
         def toggle_debug_mode() -> None:
             self.debug_mode = not self.debug_mode
             if self.debug_mode:
-                self.debug_mode_warning["text"] = "Debug mode: ON"
+                self.debug_mode_btn["text"] = "Debug mode: ON"
             else:
-                self.debug_mode_warning["text"] = "Debug mode: OFF"
+                self.debug_mode_btn["text"] = "Debug mode: OFF"
         def toggle_low_quality() -> None:
             self.low_quality = not self.low_quality
             if self.low_quality:
@@ -911,12 +940,12 @@ class Game:
             else:
                 self.low_quality_btn["text"] = "Graphics: HIGH"
         
-        self.debug_mode_warning = tk.Button(self.root, text="",
+        self.debug_mode_btn = tk.Button(self.root, text="",
                                        command=toggle_debug_mode,
                                        relief="flat",
                                        highlightthickness=0, bd=0,
                                        font=("Arial", 16))
-        self.debug_mode_warning.place(x=UI_PADDING,y=self.window_height-UI_PADDING,
+        self.debug_mode_btn.place(x=UI_PADDING,y=self.window_height-UI_PADDING,
                                  anchor="sw")
         toggle_debug_mode()
         toggle_debug_mode()
