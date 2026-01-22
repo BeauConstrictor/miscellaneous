@@ -92,16 +92,19 @@ class Snake:
         
         self.line = self.canvas.create_line(0, 0, 0, 0,
                                             fill=self.accent)
-        self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.primary,
-                                            outline=self.primary)
+        self.head = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent,
+                                            outline=self.accent)
         self.tail = self.canvas.create_oval(0, 0, 0, 0, fill=self.accent,
                                             outline=self.accent)
-        if not self.game.low_quality:
-            self.segments = [
-                self.canvas.create_oval(0,0,0,0, fill=self.accent, outline=self.primary)
-                for _ in self.positions
-            ]
-        
+        self.left_eye = self.canvas.create_oval(0, 0, 0, 0, fill="white",
+                                                outline="")
+        self.right_eye = self.canvas.create_oval(0, 0, 0, 0, fill="white",
+                                                 outline="")
+        self.left_pupil = self.canvas.create_oval(0, 0, 0, 0, fill="black",
+                                                  outline="")
+        self.right_pupil = self.canvas.create_oval(0, 0, 0, 0, fill="black",
+                                                   outline="")
+                                     
         self.name = name
         self.nametag = self.canvas.create_text(-1000, -1000, text=self.name,
                                                fill="white",
@@ -135,14 +138,10 @@ class Snake:
         self.canvas.delete(self.line)
         self.canvas.delete(self.head)
         self.canvas.delete(self.tail)
-        if not self.game.low_quality:
-            for s in self.segments: self.canvas.delete(s)
         self.canvas.delete(self.nametag)
         self.dead = True
     
     def step(self) -> None:
-        new_oval = None
-        
         if self.add_length > MAX_EATEN_AT_ONCE:
             self.add_length = MAX_EATEN_AT_ONCE
         if self.add_length > 0:
@@ -150,25 +149,11 @@ class Snake:
         else:
             for i in range(self.shorten_rate()):
                 self.positions.popleft()
-                if not self.game.low_quality:
-                    oval = self.segments.pop(0)
-                    if new_oval:
-                        self.canvas.delete(oval)
-                    else:
-                        new_oval = oval
        
-        self.positions.append(self.move())
-        
-        if not self.game.low_quality:
-            seg = new_oval or self.canvas.create_oval(0,0,0,0,
-                                                    fill=self.accent,
-                                                    outline=self.primary,
-                                                    tags=("snake",))
-            self.segments.append(seg)
-            
+        self.positions.append(self.move())            
         self.extra_step()
     
-    def draw_low_quality(self) -> None:
+    def draw(self) -> None:
         sf = shrink_factor(len(self.game.snake.positions))
         radius = snake_radius(len(self.positions)) / sf
         px, py = self.game.snake.pos()
@@ -199,6 +184,53 @@ class Snake:
                                               rel_x+radius, rel_y+radius)
                 self.canvas.coords(self.nametag, rel_x, rel_y-NAMETAG_HEIGHT-radius)
                 self.canvas.itemconfig(self.nametag, state="normal")
+                if len(self.positions) >= 2:
+                    hx_w, hy_w = self.positions[-1]
+                    nx_w, ny_w = self.positions[-2]
+
+                    # Direction snake is facing (head forward)
+                    dir_x, dir_y = normalise((hx_w - nx_w, hy_w - ny_w), 1)
+
+                    # Screen-space head position (already computed)
+                    hx, hy = rel_x, rel_y
+
+                    # Side vector
+                    side_x, side_y = -dir_y, dir_x
+
+                    # Pupil look (use movement direction)
+                    look_x, look_y = normalise((dir_x, dir_y), radius * PUPIL_SIZE)
+
+                    # Left eye position
+                    lex = hx + side_x * radius * EYE_DISTANCE + dir_x * radius * EYE_FORWARD
+                    ley = hy + side_y * radius * EYE_DISTANCE + dir_y * radius * EYE_FORWARD
+
+                    # Right eye position
+                    rex = hx - side_x * radius * EYE_DISTANCE + dir_x * radius * EYE_FORWARD
+                    rey = hy - side_y * radius * EYE_DISTANCE + dir_y * radius * EYE_FORWARD
+
+                    eye_r = radius * EYE_SIZE
+                    pupil_r = radius * PUPIL_SIZE
+
+                    # White eyes
+                    self.canvas.coords(self.left_eye,
+                        lex-eye_r, ley-eye_r, lex+eye_r, ley+eye_r)
+                    self.canvas.coords(self.right_eye,
+                        rex-eye_r, rey-eye_r, rex+eye_r, rey+eye_r)
+
+                    # Pupils
+                    self.canvas.coords(self.left_pupil,
+                        lex+look_x-pupil_r, ley+look_y-pupil_r,
+                        lex+look_x+pupil_r, ley+look_y+pupil_r)
+
+                    self.canvas.coords(self.right_pupil,
+                        rex+look_x-pupil_r, rey+look_y-pupil_r,
+                        rex+look_x+pupil_r, rey+look_y+pupil_r)
+
+                    for item in (self.left_eye, self.right_eye,
+                                self.left_pupil, self.right_pupil):
+                        self.canvas.itemconfig(item, state="normal")
+                        self.canvas.tag_raise(item)
+                        
             if i == 0:
                 self.canvas.coords(self.tail, rel_x-radius, rel_y-radius,
                                               rel_x+radius, rel_y+radius)
@@ -210,51 +242,16 @@ class Snake:
             self.canvas.itemconfig(self.head, state="normal")
             self.canvas.tag_raise(self.line)
             self.canvas.tag_raise(self.head)
+            for item in (
+                self.left_eye, self.right_eye,
+                self.left_pupil, self.right_pupil
+            ):
+                self.canvas.tag_raise(item)
+
             self.canvas.tag_raise(self.nametag)
+
         else:
             self.canvas.itemconfig(self.line, state="hidden")
-    
-    def draw_high_quality(self) -> None:
-        sf = shrink_factor(len(self.game.snake.positions))
-        radius = snake_radius(len(self.positions)) / sf
-        px, py = self.game.snake.pos()
-
-        for i, (seg, (x, y)) in enumerate(zip(self.segments, self.positions)):
-            rel_x = (x - px)/sf + self.game.window_width/2
-            rel_y = (y - py)/sf + self.game.window_height/2
-
-            if rel_x + radius < 0 or rel_x - radius > self.game.window_width \
-            or rel_y + radius < 0 or rel_y - radius > self.game.window_height:
-                self.canvas.itemconfig(seg, state="hidden")
-                if i == len(self.positions)-1:
-                    self.canvas.itemconfig(self.nametag, state="hidden")
-                continue
-            else:
-                self.canvas.itemconfig(seg, state="normal")
-
-                self.canvas.coords(seg,
-                                rel_x - radius, rel_y - radius,
-                                rel_x + radius, rel_y + radius)
-                self.canvas.tag_raise(seg)
-                
-                if i == len(self.positions)-1:
-                    self.canvas.itemconfig(seg,
-                        fill=self.primary, outline=self.primary)
-                    self.canvas.coords(self.nametag, rel_x,
-                                    rel_y-NAMETAG_HEIGHT-radius)
-                    self.canvas.tag_raise(self.nametag)
-                    self.canvas.itemconfig(self.nametag, state="normal")
-                elif (i+1) % 6 == 0:
-                    self.canvas.itemconfig(seg,
-                        fill=self.primary, outline=self.primary)
-                else:
-                    self.canvas.itemconfig(seg,
-                        fill=self.accent, outline=self.accent)
-    
-    def draw(self) -> None:
-        self.draw_low_quality()
-        if not self.game.low_quality:
-            self.draw_high_quality()
 
 class PlayerSnake(Snake):
     def __init__(self, game: "Game") -> None:
@@ -760,8 +757,6 @@ class Game:
         self.pause_text = None
         
         self.debug_mode = False
-        self.low_quality = True
-        
         self.frame_interval = math.floor(1000/TARGET_FPS)
     
         self.root = tk.Tk()
@@ -845,8 +840,7 @@ class Game:
         self.ui.draw()
 
     def update(self):
-        if self.paused or self.game_over or \
-        (self.zoomed_out and not self.low_quality):
+        if self.paused or self.game_over:
             self.last_time = time.perf_counter()
             self.root.after(16, self.update)
             return
@@ -883,7 +877,6 @@ class Game:
         self.entry.destroy()
         self.play_btn.destroy()
         self.debug_mode_btn.destroy()
-        self.low_quality_btn.destroy()
         self.ui.show_minimap()
         
         self.root.bind("<space>", self.pause)
@@ -937,12 +930,6 @@ class Game:
                 self.debug_mode_btn["text"] = "Debug mode: ON"
             else:
                 self.debug_mode_btn["text"] = "Debug mode: OFF"
-        def toggle_low_quality() -> None:
-            self.low_quality = not self.low_quality
-            if self.low_quality:
-                self.low_quality_btn["text"] = "Graphics: LOW"
-            else:
-                self.low_quality_btn["text"] = "Graphics: HIGH"
         
         self.debug_mode_btn = tk.Button(self.root, text="",
                                        command=toggle_debug_mode,
@@ -953,16 +940,6 @@ class Game:
                                  anchor="sw")
         toggle_debug_mode()
         toggle_debug_mode()
-        
-        self.low_quality_btn = tk.Button(self.root, text="",
-                                       command=toggle_low_quality,
-                                       bg="#60e088", fg="#edf4f1", relief="flat",
-                                       highlightthickness=0, bd=0,
-                                       font=("Arial", 16))
-        self.low_quality_btn.place(x=UI_PADDING,y=self.window_height-UI_PADDING-16*2-UI_PADDING,
-                                 anchor="sw")
-        toggle_low_quality()
-        toggle_low_quality()
                 
         self.root.mainloop()
 

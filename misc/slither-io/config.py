@@ -21,6 +21,11 @@ PALETTE = [
     (0, 204, 204) 
 ]
 
+EYE_SIZE = 0.45;
+PUPIL_SIZE = 0.2;
+EYE_DISTANCE = 0.5;
+EYE_FORWARD = 0.4;
+
 # UI
 UI_PADDING = 20                 # How far from the edge of the screen to place 
                                 # ui
@@ -33,8 +38,8 @@ DEBUG_UPDATE_INTERVAL = 15      # Update debug screen once every x frames
 LEADERBOARD_SIZE = 3            # How many bots to show above and below player
 
 # Dimensions of the bg.png tile
-BG_WIDTH = 599
-BG_HEIGHT = 519
+BG_WIDTH = 2048
+BG_HEIGHT = 2048
 
 # Performance
 TARGET_FPS = 40                 # FPS cap
