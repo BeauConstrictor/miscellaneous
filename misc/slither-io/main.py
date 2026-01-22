@@ -150,7 +150,7 @@ class Snake:
             for i in range(self.shorten_rate()):
                 self.positions.popleft()
        
-        self.positions.append(self.move())            
+        self.positions.append(self.move())
         self.extra_step()
     
     def draw(self) -> None:
@@ -169,9 +169,14 @@ class Snake:
             
             if rel_x + radius < -LOW_QUAL_CULLING_LEEWAY or rel_x - radius > self.game.window_width + LOW_QUAL_CULLING_LEEWAY \
             or rel_y + radius < -LOW_QUAL_CULLING_LEEWAY or rel_y - radius > self.game.window_height + LOW_QUAL_CULLING_LEEWAY:
-                if i == len(self.positions)-1:
+                if i == len(self.positions) - 1:
                     self.canvas.itemconfig(self.nametag, state="hidden")
                     self.canvas.itemconfig(self.head, state="hidden")
+                    for item in (
+                        self.left_eye, self.right_eye,
+                        self.left_pupil, self.right_pupil
+                    ):
+                        self.canvas.itemconfig(item, state="hidden")
                 elif i == 0:
                     self.canvas.itemconfig(self.tail, state="hidden")
                 continue
@@ -188,36 +193,23 @@ class Snake:
                     hx_w, hy_w = self.positions[-1]
                     nx_w, ny_w = self.positions[-2]
 
-                    # Direction snake is facing (head forward)
                     dir_x, dir_y = normalise((hx_w - nx_w, hy_w - ny_w), 1)
-
-                    # Screen-space head position (already computed)
                     hx, hy = rel_x, rel_y
-
-                    # Side vector
                     side_x, side_y = -dir_y, dir_x
-
-                    # Pupil look (use movement direction)
                     look_x, look_y = normalise((dir_x, dir_y), radius * PUPIL_SIZE)
-
-                    # Left eye position
                     lex = hx + side_x * radius * EYE_DISTANCE + dir_x * radius * EYE_FORWARD
                     ley = hy + side_y * radius * EYE_DISTANCE + dir_y * radius * EYE_FORWARD
-
-                    # Right eye position
                     rex = hx - side_x * radius * EYE_DISTANCE + dir_x * radius * EYE_FORWARD
                     rey = hy - side_y * radius * EYE_DISTANCE + dir_y * radius * EYE_FORWARD
 
                     eye_r = radius * EYE_SIZE
                     pupil_r = radius * PUPIL_SIZE
 
-                    # White eyes
                     self.canvas.coords(self.left_eye,
                         lex-eye_r, ley-eye_r, lex+eye_r, ley+eye_r)
                     self.canvas.coords(self.right_eye,
                         rex-eye_r, rey-eye_r, rex+eye_r, rey+eye_r)
 
-                    # Pupils
                     self.canvas.coords(self.left_pupil,
                         lex+look_x-pupil_r, ley+look_y-pupil_r,
                         lex+look_x+pupil_r, ley+look_y+pupil_r)
@@ -471,7 +463,9 @@ class Orb:
                     snake.add_length += MAX_EATEN_AT_ONCE
                 else:
                     snake.add_length += math.ceil(self.radius * ORB_LENGTH_ADD)
-                if snake is self.game.snake: self.game.ui.last_orb = time.perf_counter()
+                if snake is self.game.snake:
+                    self.game.ui.last_orb = time.perf_counter()
+                    self.game.ui.length_size_boost += 5
                 self.regen()
             elif dist < ORB_ATTRACTION_DIST + radius + self.radius:
                 attraction = normalise((dx, dy), ORB_ATTRACTION*self.game.dt)
@@ -526,6 +520,14 @@ class UserInterface:
                                             text=f"",
                                             fill="white",
                                             font=("Courier", 12, "bold"))
+        
+        self.length = self.canvas.create_text(self.game.window_width/2, 80,
+                                              text="20",
+                                              fill="white",
+                                              font=("Courier", 30, "bold"))
+        
+        self.length_size_boost = 0
+        
         self.text_content = ""
         
         self.dev_mode = self.game.debug_mode
@@ -633,6 +635,10 @@ class UserInterface:
         return text
         
     def draw(self) -> None:
+        self.length_size_boost -= 10 * self.game.dt
+        self.length_size_boost = max(0, self.length_size_boost)
+        self.length_size_boost = min(50-30, self.length_size_boost)
+        
         px, py = self.game.snake.pos()
 
         scale = MINIMAP_SIZE / (MINIMAP_RADIUS * 2)
@@ -670,6 +676,10 @@ class UserInterface:
         self.canvas.itemconfig(self.text, text=self.text_content)
         self.canvas.moveto(self.text, UI_PADDING, UI_PADDING)
         self.canvas.tag_raise(self.text)
+        
+        self.canvas.itemconfig(self.length, text=len(self.game.snake.positions),
+                               font=("Courier", 30 + int(self.length_size_boost), "bold"))
+        self.canvas.tag_raise(self.length)
 
 class Background:
     def __init__(self, game: "Game") -> None:

@@ -43,19 +43,19 @@ BG_HEIGHT = 2048
 
 # Performance
 TARGET_FPS = 40                 # FPS cap
-AI_COUNT = 10                   # How many bots to include
-ORB_COUNT = 150                  # How many non-corpse orbs to place at once
+AI_COUNT = 19                   # How many bots to include
+ORB_COUNT = 50                  # How many non-corpse orbs to place at once
 COLLISION_DETECT_GAP = 1        # Higher = better FPS, but less reliable
                                 # collisions
 LOW_QUALITY_FIDELITY = 1        # Higher = better FPS, blockier snakes
 LOW_QUAL_CULLING_LEEWAY = 50    # How far off-screen to draw to prevent things
                                 # disappearing at the edges
-INTER_BOT_AI = True             # Whether or not bots kill or avoid each other
+INTER_BOT_AI = False             # Whether or not bots kill or avoid each other
 PREPARE_SNAKES = False          # Causes a longer load time as the snakes are
                                 # put in organic positions at startup. Without,
                                 # snakes are in a vertical line.
 AI_FINDS_ORBS = True            # Whether or not the AI actively seeks out orbs
-LOCAL_ORBS = False               # Orbs only spawn around the player
+LOCAL_ORBS = True               # Orbs only spawn around the player
 
 # Gameplay
 ORB_SHAKE = 10                  # How vigorously the normal orbs shake
@@ -66,7 +66,7 @@ BIG_ORB_SHAKE_RATE = 100        # How vigorously the big orbs shake
 CORPSE_SPREAD = 20              # How spread out the orbs from a corpse are
 ORB_ATTRACTION_DIST = 100       # How close you need to be to an orb to eat it 
 SPAWN_RADIUS = 2000             # How far away from origin to spawn bots
-PLR_TURN_SPEED = 0.3            # How quickly the player can turn
+PLR_TURN_SPEED = 0.1            # How quickly the player can turn
 ORB_LENGTH_ADD = 0.1            # How much length each orb adds
 SPEED = 250                     # Standard movement speed
 SPRINT_SPEED = 450              # Movement speed when sprinting
