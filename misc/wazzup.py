@@ -42,7 +42,7 @@ class Room:
         self.send_queue.put(f"<- {self.name} has changed their name to '{name}'. ->")
         self.name = name
 
-    def receive(self, block=True, timeout=None):
+    def receive(self):
         try:
             return self.recv_queue.get_nowait()
         except queue.Empty:
