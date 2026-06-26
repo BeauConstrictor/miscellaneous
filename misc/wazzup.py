@@ -1,5 +1,6 @@
 from tkinter import simpledialog
 from tkinter import messagebox
+from tkinter import ttk
 import tkinter as tk
 import ipaddress
 import threading
@@ -7,11 +8,16 @@ import socket
 import random
 import queue
 
+SEP = " │ "
 PORT = 5499
 RECEIVE_INTERVAL = 200
+COLORS = ["#cc421d", "#98971a", "#d89921", "#458588", "#b16286", "#689d6a"]
 
 def code_to_ip(code: str) -> str:
     return str(ipaddress.IPv4Address(bytes.fromhex(code)))
+
+def randcol(sender: str) -> str:
+    return f"sender{str(hash(sender) % len(COLORS))}"
 
 class Room:
     def __init__(self, code: str) -> None:
@@ -109,6 +115,7 @@ class App(tk.Tk):
         self.build_menubar()
         self.build_main_area()
         self.build_bottom_bar()
+        self.set_style()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.receive()
 
@@ -121,19 +128,35 @@ class App(tk.Tk):
         self.config(menu=menubar)
 
     def build_main_area(self) -> None:
-        self.text = tk.Text(self, wrap="word", height=1)
+        self.text = tk.Text(self, wrap="word", height=1,
+            bg="#282828", borderwidth=0,
+            relief="flat",
+            highlightthickness=0
+        )
         self.text.pack(fill="both", expand=True)
         self.text.tag_configure(
             "info",
-            foreground="gray",
-            font=("Courier", 11, "italic")
+            foreground="#928374",
+            font=("Consolas", 11, "italic")
         )
         self.text.tag_configure(
-            "msg",
-            foreground="black",
-            font=("Courier", 11)
+            "separator",
+            foreground="#928374",
+            font=("Consolas", 11)
         )
 
+        for i, c in enumerate(COLORS):
+            self.text.tag_configure(
+                f"sender{i}",
+                foreground=c,
+                font=("Consolas", 11),
+            )
+
+        self.text.tag_configure(
+            "msg",
+            foreground="#ebdbb2",
+            font=("Consolas", 11)
+        )
         self.text.config(state="disabled")
 
     def append_text(self, msg: str) -> None:
@@ -143,16 +166,44 @@ class App(tk.Tk):
         self.text.see("end")
 
     def build_bottom_bar(self) -> None:
-        bottom = tk.Frame(self)
+        bottom = ttk.Frame(self)
         bottom.pack(fill="x", side="bottom")
 
-        self.entry = tk.Entry(bottom, state="disabled")
+        self.entry = ttk.Entry(bottom, state="disabled")
         self.entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
 
         self.entry.bind("<Return>", lambda e: self.send())
 
-        self.send_btn = tk.Button(bottom, text="Send", command=self.send, state="disabled")
+        self.send_btn = ttk.Button(bottom, text="Send", command=self.send, state="disabled")
         self.send_btn.pack(side="right", padx=5, pady=5)
+
+    def set_style(self) -> None:
+        style = ttk.Style()
+        style.theme_use("clam")
+        self.configure(bg="#282828")
+
+        style.configure("TFrame",
+            background="#1d2021",
+            borderwidth=0,
+            relief="flat",
+        )
+
+        style.configure("TEntry",
+            font=("Consolas", 11),
+            padding=4,
+            fieldbackground="#282828",
+            foreground="#ebdbb2",
+            borderwidth=0,
+            relief="flat",
+            highlightthickness=0,
+        )
+
+        style.configure("TButton",
+            font=("Segoe UI", 9),
+            padding=5,
+            background="#3c3836",
+            foreground="#ebdbb2",
+        )
 
     def on_close(self) -> None:
         self.leave()
@@ -209,15 +260,17 @@ class App(tk.Tk):
         msg = None
         while (msg := self.room.receive()):
             self.text.config(state="normal")
-            if msg.startswith("<- "):
-                self.text.insert("end", " " * 20 + " | " + msg[3:-3] + "\n", "info")
+            if msg.startswith("<- ") and msg.endswith(" ->"):
+                    self.text.insert("end", "*".rjust(20), "info")
+                    self.text.insert("end", SEP, "separator")
+                    self.text.insert("end", msg[3:-3] + "\n", "info")
             else:
                 parts = msg.split(": ")
                 if len(parts) > 1:
-                    self.text.insert("end", ": ".join(parts[:1]).rjust(20) + " | ", "info")
+                    sender = ": ".join(parts[:1])
+                    self.text.insert("end", sender.rjust(20), randcol(sender))
+                    self.text.insert("end", SEP, "separator")
                     self.text.insert("end", ": ".join(parts[1:]) + "\n", "msg")
-                else:
-                    self.text.insert("end", msg + "\n", "msg")
             self.text.config(state="disabled")
             self.text.see("end")
 
