@@ -121,7 +121,7 @@ class App(tk.Tk):
         self.config(menu=menubar)
 
     def build_main_area(self) -> None:
-        self.text = tk.Text(self, wrap="word")
+        self.text = tk.Text(self, wrap="word", height=1)
         self.text.pack(fill="both", expand=True)
         self.text.tag_configure(
             "info",
