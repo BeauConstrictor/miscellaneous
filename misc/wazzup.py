@@ -4,6 +4,7 @@ from tkinter import ttk
 import tkinter as tk
 import ipaddress
 import threading
+import hashlib
 import socket
 import random
 import queue
@@ -17,7 +18,7 @@ def code_to_ip(code: str) -> str:
     return str(ipaddress.IPv4Address(bytes.fromhex(code)))
 
 def randcol(sender: str) -> str:
-    return f"sender{str(hash(sender) % len(COLORS))}"
+    return f"sender{int(hashlib.sha256(sender.encode()).hexdigest(), 16) % len(COLORS)}"
 
 class Room:
     def __init__(self, code: str) -> None:
