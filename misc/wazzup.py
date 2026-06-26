@@ -218,8 +218,8 @@ class App(tk.Tk):
                     self.text.insert("end", ": ".join(parts[1:]) + "\n", "msg")
                 else:
                     self.text.insert("end", msg + "\n", "msg")
-                self.text.config(state="disabled")
-                self.text.see("end")
+            self.text.config(state="disabled")
+            self.text.see("end")
 
 if __name__ == "__main__":
     App().mainloop()
