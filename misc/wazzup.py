@@ -109,7 +109,7 @@ class App(tk.Tk):
         self.build_menubar()
         self.build_main_area()
         self.build_bottom_bar()
-
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.receive()
 
     def build_menubar(self) -> None:
@@ -154,6 +154,10 @@ class App(tk.Tk):
         self.send_btn = tk.Button(bottom, text="Send", command=self.send, state="disabled")
         self.send_btn.pack(side="right", padx=5, pady=5)
 
+    def on_close(self) -> None:
+        self.leave()
+        self.destroy()
+    
     def send(self) -> None:
         if not self.room: return
 
