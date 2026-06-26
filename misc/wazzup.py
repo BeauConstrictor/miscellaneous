@@ -206,11 +206,11 @@ class App(tk.Tk):
         while (msg := self.room.receive()):
             self.text.config(state="normal")
             if msg.startswith("<- "):
-                self.text.insert("end", msg[3:-3] + "\n", "info")
+                self.text.insert("end", " " * 20 + " | " + msg[3:-3] + "\n", "info")
             else:
                 parts = msg.split(": ")
                 if len(parts) > 1:
-                    self.text.insert("end", ": ".join(parts[:1]) + ": ", "info")
+                    self.text.insert("end", ": ".join(parts[:1]).rjust(20) + " | ", "info")
                     self.text.insert("end", ": ".join(parts[1:]) + "\n", "msg")
                 else:
                     self.text.insert("end", msg + "\n", "msg")
