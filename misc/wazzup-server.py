@@ -31,7 +31,7 @@ def broadcast(message: bytes) -> None:
             try:
                 sock.sendall(message + b"\n")
             except OSError:
-                dead.append(sock)
+                pass
 
         for sock in dead:
             clients.discard(sock)
